@@ -1,0 +1,18 @@
+* good articles
+
+  - Visualizing Thompson’s Construction Algorithm for NFAs, step-by-step
+    https://medium.com/swlh/visualizing-thompsons-construction-algorithm-for-nfas-step-by-step-f92ef378581b
+
+  - Graphviz examples
+    https://sketchviz.com/graphviz-examples
+
+  - Graphviz language bindings
+    https://graphviz.org/resources/#language-bindings
+
+* studying other lexers
+
+  - llvm's cpp lexer 
+    https://clang.llvm.org/doxygen/Lexer_8cpp_source.html (bool Lexer::LexTokenInternal())
+
+  - go-jsonnet's lexer
+    https://github.com/google/go-jsonnet (Lex())

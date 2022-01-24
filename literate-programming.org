@@ -1,0 +1,31 @@
+#+NAME: unique letters in keywords
+#+begin_src elisp :results verbatim
+  (let ((keywords '("if" "public" "read"
+                    "then" "private" "write"
+                    "else" "func" "return"
+                    "integer" "var" "self"
+                    "float" "struct" "inherits"
+                    "void" "while" "let"
+                    "func" "impl")))
+    (delete-dups (sort (mapcan (lambda (keyword) (split-string keyword "" t)) ;; https://stackoverflow.com/a/5959697
+                               keywords) 
+                       #'string<)))
+#+end_src
+
+#+RESULTS: 
+: ("a" "b" "c" "d" "e" "f" "g" "h" "i" "l" "m" "n" "o" "p" "r" "s" "t" "u" "v" "w")
+
+#+NAME: sort keywords
+#+begin_src elisp :results verbatim
+  (let ((keywords '("if" "public" "read"
+                      "then" "private" "write"
+                      "else" "func" "return"
+                      "integer" "var" "self"
+                      "float" "struct" "inherits"
+                      "void" "while" "let"
+                      "func" "impl")))
+    (sort keywords #'string<))
+#+end_src
+
+#+RESULTS: sort keywords
+: 20
