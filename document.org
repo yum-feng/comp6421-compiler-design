@@ -1,0 +1,508 @@
+#+TITLE: assignment-1
+
+* Lexical specifications
+** alphanum, fraction, letter, digit, nonzero
+
+   #+NAME: letter
+   #+begin_src elisp :results verbatim
+     (defconst letters (do ((u ?Z (1- u))
+                            (l ?a (1+ l))
+                            (U nil)
+                            (L nil))
+                           ((and (< u ?A) (> l ?z)) (append (nreverse L) U))
+                         (push (string u) U)
+                         (push (string l) L)))
+
+     (reduce (lambda (a b) (concat a "|" b)) letters)
+   #+end_src
+
+   #+RESULTS: letter
+   : "a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z"A
+
+   #+NAME: digit
+   #+begin_src elisp :results verbatim
+     (defconst digits (loop for digit from ?0 to ?9
+                            collect (string digit)))
+
+     (reduce (lambda (a b) (concat a "|" b)) digits)
+   #+end_src
+
+   #+RESULTS: digit
+   : "0|1|2|3|4|5|6|7|8|9"
+
+   #+NAME: nonzero
+   #+begin_src elisp :results verbatim
+     (defconst nonzeros (loop for digit from ?1 to ?9
+                            collect (string digit)))
+
+     (reduce (lambda (a b) (concat a "|" b)) nonzeros)
+   #+end_src
+
+   #+RESULTS: nonzero
+   : "1|2|3|4|5|6|7|8|9"
+
+   #+NAME: fraction
+   #+begin_src elisp :results verbatim :noweb yes
+     (format ".(%s)*(%s)|.0"
+             <<digit()>>
+             <<nonzero()>>) ;; would be cool to have a macro which surrounds the result in parenthesis
+   #+end_src
+
+   #+RESULTS: fraction
+   : ".(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0"
+
+   #+NAME: alphanum
+   #+begin_src elisp :results verbatim :noweb yes
+     (format "(%s)|(%s)|_"
+             <<letter()>>
+             <<digit()>>)
+   #+end_src
+
+** id, integer, float
+
+   #+NAME: id
+   #+begin_src elisp :results verbatim :noweb yes
+     (format "(%s)(%s)*"
+             <<letter()>>
+             <<alphanum()>>)
+   #+end_src
+
+   #+RESULTS: id
+   : "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*"
+
+   #+NAME: integer
+   #+begin_src elisp :results verbatim :noweb yes
+     (format "(%s)(%s)*|0"
+             <<nonzero()>>
+             <<digit()>>)
+   #+end_src
+
+   #+RESULTS: integer
+   : "(1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0"
+
+   #+NAME: float
+   #+begin_src elisp :results verbatim :noweb yes
+     (format "(%s)(%s)(e(+|-)?(%s))?"
+             <<integer()>>
+             <<fraction()>>
+             <<integer()>>) ;; WARNING: need to escape . and +
+   #+end_src
+
+   #+RESULTS: float
+   : "((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?"
+
+** operators, punctuation and reserved words
+
+   #+NAME: operators
+   #+begin_src elisp :results verbatim
+     (defconst operators '("==" "+" "|"
+                           "<>" "-" "&"
+                           "<"  "*" "!"
+                           ">"  "/"
+                           "<=" "="
+                           ">="))
+
+     (reduce (lambda (a b) (concat a "|" b)) operators) ;; WARNING: need to escape |
+   #+end_src
+
+   #+RESULTS: operators
+   : "==|+|||<>|-|&|<|*|!|>|/|<=|=|>="
+
+   #+NAME: punctuation
+   #+begin_src elisp :results verbatim
+     (defconst punctuation '("(" ";"
+                             ")" ","
+                             "{" "."
+                             "}" ":"
+                             "[" "::"
+                             "]" "->"))
+
+     (reduce (lambda (a b) (concat a "|" b)) punctuation)
+   #+end_src
+
+   #+RESULTS: punctuation
+   : "(|;|)|,|{|.|}|:|[|::|]|->"
+
+   #+NAME: reserved-words
+   #+begin_src elisp :results verbatim
+     (defconst reserved-words '("if"      "public"  "read"
+                                "then"    "private" "write"
+                                "else"    "func"    "return"
+                                "integer" "var"     "self"
+                                "float"   "struct"  "inherits"
+                                "void"    "while"   "let"
+                                "func"    "impl"))
+
+       (reduce (lambda (a b) (concat a "|" b)) reserved-words)
+   #+end_src
+
+   #+RESULTS: reserved-words
+   : "if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl"
+
+** comments
+
+   #+NAME: comments
+   #+begin_src elisp :results verbatim
+     (defconst comments '("/*" "*/"
+                           "//"))
+
+     (reduce (lambda (a b) (concat a "|" b)) comments)
+   #+end_src
+
+   #+RESULTS: comments
+   : "/*|*/|//"
+
+** regular expression for language
+
+   #+NAME: regular expression for language
+   #+begin_src elisp :results verbatim :noweb yes
+     (format "(%s)|(%s)|(%s)|(%s)|(%s)|(%s)"
+             <<id()>>
+             <<integer()>>
+             <<float()>>
+             <<operators()>>
+             <<punctuation()>>
+             <<reserved-words()>>) ;; WARNING: sub-components contains characters which requires escaping
+   #+end_src
+
+   #+RESULTS: regular expression for language
+   : "((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*)|((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)|(((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?)|(==|+|||<>|-|&|<|*|!|>|/|<=|=|>=)|((|;|)|,|{|.|}|:|[|::|]|->)|(if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl)"
+
+* Finite state automation
+** helper functions
+
+   #+begin_src elisp
+     (defun append-suffix-edges ()
+       (interactive)
+       (save-excursion
+         (let ((head (org-babel-where-is-src-block-head))
+               (suffix (read-string "append with: ")))
+           (goto-char head)
+           (looking-at org-babel-src-block-regexp)
+           (while (re-search-forward "\\ ([0-9]\\{3\\}\\) " (match-end 5) nil)
+             (replace-match (format " \"\\1%s\" " suffix))))))
+     
+     (defun refactor-graphviz-edges ()
+       (interactive)
+       (save-excursion
+         (let ((head (org-babel-where-is-src-block-head)))
+           (goto-char head)
+           (looking-at org-babel-src-block-regexp)))
+       (save-excursion
+         (perform-replace
+          (format " %s " (thing-at-point 'word t))
+          (format " %03d " (string-to-number (read-string "replace with: ")))
+          t
+          nil
+          nil
+          ;; optionals
+          nil
+          nil
+          (match-beginning 5)
+          (match-end 5)
+          nil
+          nil)))
+   #+end_src
+   
+** reserved words
+
+   #+NAME: dfa-reserved-words
+   #+begin_src dot file :file dfa-reserved-words.png
+     digraph {
+       rankdir="LR"
+    
+       // reserved words
+       else [shape="doublecircle"];
+       float [shape="doublecircle"];
+       func [shape="doublecircle"];
+       if [shape="doublecircle"];
+       impl [shape="doublecircle"];
+       inherits [shape="doublecircle"];
+       integer [shape="doublecircle"];
+       let [shape="doublecircle"];
+       private [shape="doublecircle"];
+       public [shape="doublecircle"];
+       read [shape="doublecircle"];
+       return [shape="doublecircle"];
+       self [shape="doublecircle"];
+       struct [shape="doublecircle"];
+       then [shape="doublecircle"];
+       var [shape="doublecircle"];
+       void [shape="doublecircle"];
+       while [shape="doublecircle"];
+       write [shape="doublecircle"];
+
+       // lexical specification
+       // reserved words ::= "if", "public", "read", "then", "private", "write", "else", "func", "return", "integer", "var", "self", "float", "struct", "inherits", "void", "while", "let", "func", "impl"
+    
+       // lexical specification rewritten in single character and fed into regex -> dfa tool
+       // reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
+
+       000 -> 001 [label = "e"]; 001 -> 011 [label = "l"]; 011 -> 028 [label = "s"]; 028 -> 046 [label = "e"]; 046 -> else;
+       000 -> 002 [label = "f"]; 002 -> 012 [label = "l"]; 012 -> 029 [label = "o"]; 029 -> 047 [label = "a"]; 047 -> 062 [label = "t"]; 062 -> float;
+       /*                     */ 002 -> 013 [label = "u"]; 013 -> 030 [label = "n"]; 030 -> 048 [label = "c"]; 048 -> func;
+       000 -> 003 [label = "i"]; 003 -> 014 [label = "f"]; 014 -> if;
+       /*                     */ 003 -> 015 [label = "m"]; 015 -> 031 [label = "p"]; 031 -> 049 [label = "l"]; 049 -> impl;
+       /*                     */ 003 -> 016 [label = "n"]; 016 -> 032 [label = "h"]; 032 -> 050 [label = "e"]; 050 -> 063 [label = "r"]; 063 -> 071 [label = "i"]; 071 -> 077 [label = "t"]; 077 -> 080 [label = "s"]; 080 -> inherits;
+       /*                     */ /*                     */ 016 -> 033 [label = "t"]; 033 -> 051 [label = "e"]; 051 -> 064 [label = "g"]; 064 -> 072 [label = "e"]; 072 -> 078 [label = "r"]; 078 -> integer;
+       000 -> 004 [label = "l"]; 004 -> 017 [label = "e"]; 017 -> 034 [label = "t"]; 034 -> let;
+       000 -> 005 [label = "p"]; 005 -> 018 [label = "r"]; 018 -> 035 [label = "i"]; 035 -> 052 [label = "v"]; 052 -> 065 [label = "a"]; 065 -> 073 [label = "t"]; 073 -> 079 [label = "e"]; 079 -> private;
+       /*                     */ 005 -> 019 [label = "u"]; 019 -> 036 [label = "b"]; 036 -> 053 [label = "l"]; 053 -> 066 [label = "i"]; 066 -> 074 [label = "c"]; 074 -> public;
+       000 -> 006 [label = "r"]; 006 -> 020 [label = "e"]; 020 -> 037 [label = "a"]; 037 -> 054 [label = "d"]; 054 -> read;
+       /*                     */ /*                     */ 020 -> 038 [label = "t"]; 038 -> 055 [label = "u"]; 055 -> 067 [label = "r"]; 067 -> 075 [label = "n"]; 075 -> return;
+       000 -> 007 [label = "s"]; 007 -> 021 [label = "e"]; 021 -> 039 [label = "l"]; 039 -> 056 [label = "f"]; 056 -> self;
+       /*                     */ 007 -> 022 [label = "t"]; 022 -> 040 [label = "r"]; 040 -> 057 [label = "u"]; 057 -> 068 [label = "c"]; 068 -> 076 [label = "t"]; 076 -> struct;
+       000 -> 008 [label = "t"]; 008 -> 023 [label = "h"]; 023 -> 041 [label = "e"]; 041 -> 058 [label = "n"]; 058 -> then;
+       000 -> 009 [label = "v"]; 009 -> 024 [label = "a"]; 024 -> 042 [label = "r"]; 042 -> var;
+       /*                     */ 009 -> 025 [label = "o"]; 025 -> 043 [label = "i"]; 043 -> 059 [label = "d"]; 059 -> void;
+       000 -> 010 [label = "w"]; 010 -> 026 [label = "h"]; 026 -> 044 [label = "i"]; 044 -> 060 [label = "l"]; 060 -> 069 [label = "e"]; 069 -> while;
+       /*                     */ 010 -> 027 [label = "r"]; 027 -> 045 [label = "i"]; 045 -> 061 [label = "t"]; 061 -> 070 [label = "e"]; 070 -> write;
+     }
+   #+end_src
+
+   #+RESULTS: dfa-reserved-words
+   [[file:dfa-reserved-words.png]]
+
+** id
+
+   #+NAME: dfa-id
+   #+begin_src dot file :file dfa-id.png
+     digraph {
+       rankdir="LR"
+     
+       "reserved words maybe" [shape="doublecircle"];
+     
+       id [shape="doublecircle"];
+     
+       // lexical specification
+       // id ::= Σ_letter Σ_alphanum*
+     
+       // lexical specification rewritten in single character and fed into regex -> dfa tool
+       // id ::= la* (Σ_letter -> l, Σ_alphanum -> a)
+     
+       000 -> "reserved words maybe" [label = "{e,f,i,l,p,r,s,t,v,w}"];
+       000 -> 001 [label = "Σ_letter \\ {e,f,i,l,p,r,s,t,v,w}"];        001 -> 001 [label = "Σ_alphanum"] ; 001 -> id [label = "Σ \\ Σ_alphanum (ω)"];
+     }
+   #+end_src
+
+   #+RESULTS: dfa-id
+   [[file:dfa-id.png]]
+
+** integer
+
+   #+NAME: dfa-integer
+   #+begin_src dot file :file dfa-integer.png
+     digraph {
+       rankdir="LR"
+    
+       integer [shape="doublecircle"];
+    
+       // lexical specification
+       // integer ::= Σ_nonzero Σ_digit* | 0
+    
+       // lexical specification rewritten in single character and fed into regex -> dfa tool
+       // integer ::= nd*|0 (Σ_nonzero -> n, Σ_digit -> n)
+    
+       000 -> integer [label = "0"]; 
+       000 -> 001 [label = "Σ_nonzero"]; 001 -> 001 [label = "Σ_digit"]; 001 -> integer [label = "Σ \\ Σ_digit (ω)"];
+     }
+   #+end_src
+
+   #+RESULTS:
+   [[file:dfa-integer.png]]
+
+** float
+
+   #+NAME: dfa-float
+   #+begin_src dot file :file dfa-float.png
+     digraph {
+       rankdir="LR"
+    
+       float [shape="doublecircle"];
+       // (copy paste)
+       // fraction ::== .(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0
+    
+    
+       // lexical specification
+       // float ::=  Σ_integer Σ_fraction [e[+|−] Σ_integer]
+    
+       // lexical specification rewritten in sub-atomic elements
+       // float ::= (Σ_nonzero Σ_digit* | 0) (. Σ_digit* Σ_nonzero | .0) [e[+|−] Σ_integer]
+    
+       // lexical specification rewritten in single character
+       // float ::= (nd*|0)(.d*n|.0)(e(p|m)?(nd*|0))? (Σ_nonzero -> n, Σ_digit -> n,  + -> p, - -> m)
+    
+       // lexical specification rewritten in literal single character
+       // float ::= ((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(p|m)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?
+    
+       000 -> 001 [label = "0"];                                         001 -> 003 [label = "."];                                 
+       /*                                                                                                                                                                                                        */ 007 -> float [label = "0"];
+       /*                                                                                                                                                                                                        */ 007 -> 010 [label = "Σ_nonzero"]; 010 -> float [label = "Σ \\ Σ_digit (ω)"];
+       /*                                                                                                                                                                                                                                          */ 010 -> 010 [label = "Σ_digit"];
+       /*                                                                                                                                                                      */ 005 -> float [label = "0"];
+       /*                                                                                                                                                                      */ 005 -> 007 [label = "{+,-}"];
+       /*                                                                                                                                                                      */ 005 -> 010 [label = "Σ_nonzero"];
+       000 -> 002 [label = "Σ_nonzero"];                                 002 -> 003 [label = "."]; 003 -> 006 [label = "Σ_digit"];
+       /*                             */ 002 -> 002 [label = "Σ_digit"];
+       /*                                                                                                                       */ 006 -> float [label = "Σ \\ Σ_digit ∪ {e}"];
+       /*                                                                                                                       */ 006 -> 005 [label = "e"];
+       /*                                                                                                                       */ 006 -> 006 [label = "Σ_nonzero"];
+       /*                                                                                                                       */ 006 -> 008 [label = "0"];                      008 -> 008 [label = "0"];
+       /*                                                                                                                                                                      */ 008 -> 006 [label = "Σ_nonzero"]; 
+     }
+   #+end_src
+
+   #+RESULTS: dfa-float
+   [[file:dfa-float.png]]
+
+** operator
+
+   #+NAME: dfa-operator
+   #+begin_src dot file :file dfa-operator.png
+     digraph {
+       rankdir="LR"
+     
+       // operators
+     
+       "==" [shape="doublecircle"];
+       "<>" [shape="doublecircle"];       
+       "<"  [shape="doublecircle"];     
+       ">"  [shape="doublecircle"];
+       "<=" [shape="doublecircle"];
+       ">=" [shape="doublecircle"];
+       "+"  [shape="doublecircle"];
+       "-"  [shape="doublecircle"];
+       "*"  [shape="doublecircle"];     
+       "/"  [shape="doublecircle"];
+       "="  [shape="doublecircle"];
+       "|"  [shape="doublecircle"];
+       "&"  [shape="doublecircle"];
+       "!"  [shape="doublecircle"];     
+     
+     
+       // lexical specification
+       // operator :== "!" "&" "(" ")" "*" "+" "," "-" "->" "." "/" ":" "::" ";" "<" "<=" "<>" "=" "==" ">" ">=" "[" "]" "{" "|" "}"
+     
+
+
+       /*                     */ 015 -> "==" [label = "="];
+       /*                     */ 014 -> "<>" [label = ">"];
+       000 -> 014 [label = "<"]; 014 -> "<" [label = "Σ \\ {\"=\", \">\"}"]; 
+       000 -> 016 [label = ">"]; 016 -> ">" [label = "Σ \\ {\"=\"}"]; 
+       /*                     */ 014 -> "<=" [label = "="];
+       /*                     */ 016 -> ">=" [label = "="]; 
+       000 -> 006 [label = "+"]; 006 -> "+";
+       000 -> 008 [label = "-"]; 008 -> "-" [label = "Σ \\ {\">\"}"];
+       000 -> 005 [label = "*"]; 005 -> "*";
+       000 -> 011 [label = "/"]; 011 -> "/";
+       000 -> 015 [label = "="]; 015 -> "=" [label = "Σ \\ {\"=\"}"];
+       000 -> 020 [label = "|"]; 020 -> "|";
+       000 -> 001 [label = "!"]; 001 -> "!";
+       000 -> 002 [label = "&"]; 002 -> "&";     
+     }
+   #+end_src
+
+   #+RESULTS: dfa-operator
+   [[file:dfa-operator.png]]
+
+** punctuation
+
+   #+NAME: dfa-punctuation
+   #+begin_src dot file :file dfa-punctuation.png
+     digraph {
+       rankdir="LR"
+     
+       "("  [shape="doublecircle"];
+       ")"  [shape="doublecircle"];
+       "{"  [shape="doublecircle"];     
+         "}"  [shape="doublecircle"];
+         "["  [shape="doublecircle"];
+         "]"  [shape="doublecircle"];
+         ";"  [shape="doublecircle"];
+         ","  [shape="doublecircle"];
+         "."  [shape="doublecircle"];         
+         ":"  [shape="doublecircle"];
+         "::" [shape="doublecircle"];
+         "->" [shape="doublecircle"];
+     
+         000 -> 003 [label = "("]; 003 -> "(";
+         000 -> 004 [label = ")"]; 004 -> ")";
+         000 -> 019 [label = "{"]; 019 -> "{";
+           000 -> 021 [label = "}"]; 021 -> "}";
+           000 -> 017 [label = "["]; 017 -> "[";
+           000 -> 018 [label = "]"]; 018 -> "]";           
+           000 -> 013 [label = ";"]; 013 -> ";";
+           000 -> 007 [label = ","]; 007 -> ",";
+           000 -> 010 [label = "."]; 010 -> ".";
+           000 -> 012 [label = ":"]; 012 -> ":" [label = "Σ \\ {\":\"}"];
+           /*                     */ 012 -> "::" [label = ":"];
+           000 -> 008 [label = "-"]; 
+           /*                     */ 008 -> "->" [label = ">"];
+     
+     }
+   #+end_src
+
+   #+RESULTS: dfa-punctuation
+   [[file:dfa-punctuation.png]]
+
+** finite state automation for the language
+
+   #+NAME: dfa
+   #+begin_src dot :results file :file dfa.png
+     digraph {
+       rankdir="LR"
+    
+       // reserved words
+       else [shape="doublecircle"];
+       float [shape="doublecircle"];
+       func [shape="doublecircle"];
+       if [shape="doublecircle"];
+       impl [shape="doublecircle"];
+       inherits [shape="doublecircle"];
+       integer [shape="doublecircle"];
+       let [shape="doublecircle"];
+       private [shape="doublecircle"];
+       public [shape="doublecircle"];
+       read [shape="doublecircle"];
+       return [shape="doublecircle"];
+       self [shape="doublecircle"];
+       struct [shape="doublecircle"];
+       then [shape="doublecircle"];
+       var [shape="doublecircle"];
+       void [shape="doublecircle"];
+       while [shape="doublecircle"];
+       write [shape="doublecircle"];
+
+       // lexical specification
+       // reserved words ::= "if", "public", "read", "then", "private", "write", "else", "func", "return", "integer", "var", "self", "float", "struct", "inherits", "void", "while", "let", "func", "impl"
+    
+       // lexical specification rewritten in single character and fed into regex -> dfa tool
+       // reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
+
+       000 -> 001 [label = "e"]; 001 -> 011 [label = "l"]; 011 -> 028 [label = "s"]; 028 -> 046 [label = "e"]; 046 -> else;
+       000 -> 002 [label = "f"]; 002 -> 012 [label = "l"]; 012 -> 029 [label = "o"]; 029 -> 047 [label = "a"]; 047 -> 062 [label = "t"]; 062 -> float;
+       /*                     */ 002 -> 013 [label = "u"]; 013 -> 030 [label = "n"]; 030 -> 048 [label = "c"]; 048 -> func;
+       000 -> 003 [label = "i"]; 003 -> 014 [label = "f"]; 014 -> if;
+       /*                     */ 003 -> 015 [label = "m"]; 015 -> 031 [label = "p"]; 031 -> 049 [label = "l"]; 049 -> impl;
+       /*                     */ 003 -> 016 [label = "n"]; 016 -> 032 [label = "h"]; 032 -> 050 [label = "e"]; 050 -> 063 [label = "r"]; 063 -> 071 [label = "i"]; 071 -> 077 [label = "t"]; 077 -> 080 [label = "s"]; 080 -> inherits;
+       /*                     */ /*                     */ 016 -> 033 [label = "t"]; 033 -> 051 [label = "e"]; 051 -> 064 [label = "g"]; 064 -> 072 [label = "e"]; 072 -> 078 [label = "r"]; 078 -> integer;
+       000 -> 004 [label = "l"]; 004 -> 017 [label = "e"]; 017 -> 034 [label = "t"]; 034 -> let;
+       000 -> 005 [label = "p"]; 005 -> 018 [label = "r"]; 018 -> 035 [label = "i"]; 035 -> 052 [label = "v"]; 052 -> 065 [label = "a"]; 065 -> 073 [label = "t"]; 073 -> 079 [label = "e"]; 079 -> private;
+       /*                     */ 005 -> 019 [label = "u"]; 019 -> 036 [label = "b"]; 036 -> 053 [label = "l"]; 053 -> 066 [label = "i"]; 066 -> 074 [label = "c"]; 074 -> public;
+       000 -> 006 [label = "r"]; 006 -> 020 [label = "e"]; 020 -> 037 [label = "a"]; 037 -> 054 [label = "d"]; 054 -> read;
+       /*                     */ /*                     */ 020 -> 038 [label = "t"]; 038 -> 055 [label = "u"]; 055 -> 067 [label = "r"]; 067 -> 075 [label = "n"]; 075 -> return;
+       000 -> 007 [label = "s"]; 007 -> 021 [label = "e"]; 021 -> 039 [label = "l"]; 039 -> 056 [label = "f"]; 056 -> self;
+       /*                     */ 007 -> 022 [label = "t"]; 022 -> 040 [label = "r"]; 040 -> 057 [label = "u"]; 057 -> 068 [label = "c"]; 068 -> 076 [label = "t"]; 076 -> struct;
+       000 -> 008 [label = "t"]; 008 -> 023 [label = "h"]; 023 -> 041 [label = "e"]; 041 -> 058 [label = "n"]; 058 -> then;
+       000 -> 009 [label = "v"]; 009 -> 024 [label = "a"]; 024 -> 042 [label = "r"]; 042 -> var;
+       /*                     */ 009 -> 025 [label = "o"]; 025 -> 043 [label = "i"]; 043 -> 059 [label = "d"]; 059 -> void;
+       000 -> 010 [label = "w"]; 010 -> 026 [label = "h"]; 026 -> 044 [label = "i"]; 044 -> 060 [label = "l"]; 060 -> 069 [label = "e"]; 069 -> while;
+       /*                     */ 010 -> 027 [label = "r"]; 027 -> 045 [label = "i"]; 045 -> 061 [label = "t"]; 061 -> 070 [label = "e"]; 070 -> write;
+     }
+   #+end_src
+
+   #+RESULTS: dfa
+   [[file:dfa.png]]
+
+* Design
+* Use of tools

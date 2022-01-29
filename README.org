@@ -1,3 +1,9 @@
+* coding conventions
+
+** code comments
+
+   comments shall be enclosed in double quotes immediately under the function definition. inspired from the project https://github.com/dnaeon/clingon.
+  
 * good articles
 
   - Visualizing Thompson’s Construction Algorithm for NFAs, step-by-step
@@ -16,3 +22,12 @@
 
   - go-jsonnet's lexer
     https://github.com/google/go-jsonnet (Lex())
+
+  - parse-js
+    https://github.com/marijnh/parse-js (lex-js)
+
+  - A Quick, Dirty and Ugly Basic interpreter
+    http://www.informatimago.com/develop/lisp/com/informatimago/small-cl-pgms/basic/ (basic-process-line)
+    
+  - Yale Haskell
+    http://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/lang/lisp/code/syntax/haskell/0.html (lex-one-token)
