@@ -16,9 +16,6 @@
      (reduce (lambda (a b) (concat a "|" b)) letters)
    #+end_src
 
-   #+RESULTS: letter
-   : "a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z"A
-
    #+NAME: digit
    #+begin_src elisp :results verbatim
      (defconst digits (loop for digit from ?0 to ?9
@@ -26,9 +23,6 @@
 
      (reduce (lambda (a b) (concat a "|" b)) digits)
    #+end_src
-
-   #+RESULTS: digit
-   : "0|1|2|3|4|5|6|7|8|9"
 
    #+NAME: nonzero
    #+begin_src elisp :results verbatim
@@ -38,18 +32,12 @@
      (reduce (lambda (a b) (concat a "|" b)) nonzeros)
    #+end_src
 
-   #+RESULTS: nonzero
-   : "1|2|3|4|5|6|7|8|9"
-
    #+NAME: fraction
    #+begin_src elisp :results verbatim :noweb yes
      (format ".(%s)*(%s)|.0"
              <<digit()>>
              <<nonzero()>>) ;; would be cool to have a macro which surrounds the result in parenthesis
    #+end_src
-
-   #+RESULTS: fraction
-   : ".(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0"
 
    #+NAME: alphanum
    #+begin_src elisp :results verbatim :noweb yes
@@ -67,18 +55,12 @@
              <<alphanum()>>)
    #+end_src
 
-   #+RESULTS: id
-   : "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*"
-
    #+NAME: integer
    #+begin_src elisp :results verbatim :noweb yes
      (format "(%s)(%s)*|0"
              <<nonzero()>>
              <<digit()>>)
    #+end_src
-
-   #+RESULTS: integer
-   : "(1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0"
 
    #+NAME: float
    #+begin_src elisp :results verbatim :noweb yes
@@ -87,9 +69,6 @@
              <<fraction()>>
              <<integer()>>) ;; WARNING: need to escape . and +
    #+end_src
-
-   #+RESULTS: float
-   : "((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?"
 
 ** operators, punctuation and reserved words
 
@@ -105,9 +84,6 @@
      (reduce (lambda (a b) (concat a "|" b)) operators) ;; WARNING: need to escape |
    #+end_src
 
-   #+RESULTS: operators
-   : "==|+|||<>|-|&|<|*|!|>|/|<=|=|>="
-
    #+NAME: punctuation
    #+begin_src elisp :results verbatim
      (defconst punctuation '("(" ";"
@@ -119,9 +95,6 @@
 
      (reduce (lambda (a b) (concat a "|" b)) punctuation)
    #+end_src
-
-   #+RESULTS: punctuation
-   : "(|;|)|,|{|.|}|:|[|::|]|->"
 
    #+NAME: reserved-words
    #+begin_src elisp :results verbatim
@@ -136,9 +109,6 @@
        (reduce (lambda (a b) (concat a "|" b)) reserved-words)
    #+end_src
 
-   #+RESULTS: reserved-words
-   : "if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl"
-
 ** comments
 
    #+NAME: comments
@@ -148,9 +118,6 @@
 
      (reduce (lambda (a b) (concat a "|" b)) comments)
    #+end_src
-
-   #+RESULTS: comments
-   : "/*|*/|//"
 
 ** regular expression for language
 
@@ -164,9 +131,6 @@
              <<punctuation()>>
              <<reserved-words()>>) ;; WARNING: sub-components contains characters which requires escaping
    #+end_src
-
-   #+RESULTS: regular expression for language
-   : "((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*)|((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)|(((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?)|(==|+|||<>|-|&|<|*|!|>|/|<=|=|>=)|((|;|)|,|{|.|}|:|[|::|]|->)|(if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl)"
 
 * Finite state automation
 ** helper functions
@@ -275,9 +239,6 @@
      }
    #+end_src
 
-   #+RESULTS: dfa-reserved-words
-   [[file:dfa-reserved-words.png]]
-
 ** id
 
    #+NAME: dfa-id
@@ -299,9 +260,6 @@
      }
    #+end_src
 
-   #+RESULTS: dfa-id
-   [[file:dfa-id.png]]
-
 ** integer
 
    #+NAME: dfa-integer
@@ -321,9 +279,6 @@
        000 -> 002 [label = "Σ_nonzero"]; 002 -> 002 [label = "Σ_digit"]; 002 -> integer [label = "Σ \\ Σ_digit (ω)"];
      }
    #+end_src
-
-   #+RESULTS: dfa-integer
-   [[file:dfa-integer.png]]
 
 ** float
 
@@ -369,9 +324,6 @@
             /*                                                                                                                                                                      */ 008 -> 006 [label = "Σ_nonzero"]; 
           }
    #+end_src
-
-   #+RESULTS: dfa-float
-   [[file:dfa-float.png]]
 
 ** operator
 
@@ -419,9 +371,6 @@
      }
    #+end_src
 
-   #+RESULTS: dfa-operator
-   [[file:dfa-operator.png]]
-
 ** punctuation
 
    #+NAME: dfa-punctuation
@@ -465,8 +414,22 @@
      }
    #+end_src
 
-   #+RESULTS: dfa-punctuation
-   [[file:dfa-punctuation.png]]
+** TODO comments
+
+   #+NAME: comments
+   #+begin_src dot :file file comments.png
+     digraph {
+       rankdir="LR"
+     
+       // comments
+     
+       "/**/"  [shape="doublecircle"];
+       "//"  [shape="doublecircle"];     
+     
+       // lexical specification
+       // comments :== TODO
+       }
+   #+end_src
 
 ** finite state automation for the language
 
@@ -474,6 +437,11 @@
    #+begin_src dot :results file :file dfa.png
      digraph {
        rankdir="LR"
+     
+       labelloc = b;
+       labeljust = r;
+       label = "DISCLAIMER: states that have branched from any characters in the set {e,f,i,l,p,r,s,t,v,w} implies a hidden edge which joins the state '001-id' if a character in 'Σ_alphanum \\ {char}' is consumed, and 'id' if a character is in 'Σ \\ Σ_alphanum'."
+     
      
        // reserved words
        else [shape="doublecircle",color=red];
@@ -525,7 +493,7 @@
      
        // lexical specification
        // id ::= Σ_letter Σ_alphanum*
-
+     
      
        000 -> "001-id" [label = "Σ_letter \\ {e,f,i,l,p,r,s,t,v,w}"];        "001-id" -> "001-id" [label = "Σ_alphanum"] ; "001-id" -> id [label = "Σ \\ Σ_alphanum (ω)"];
      
@@ -533,15 +501,13 @@
        _float [shape="doublecircle",color=red];
        _integer [shape="doublecircle",color=red];
      
-       // (verbatim from the section *Lexical Specifications*)
-       // fraction ::== .(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0
-     
+       
        // lexical specification
        // float ::=  Σ_integer Σ_fraction [e[+|−] Σ_integer]
      
        // lexical specification rewritten in sub-atomic elements
        // float ::= (Σ_nonzero Σ_digit* | 0) (. Σ_digit* Σ_nonzero | .0) [e[+|−] Σ_integer]
-
+     
        /*                             */ "001-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
        /*                             */ "002-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
        000 -> "001-i-or-f" [label = "0"];                                         "001-i-or-f" -> "003-f" [label = "."];                                 
@@ -596,7 +562,7 @@
        000 -> "|" [label = "|"];
        000 -> "!" [label = "!"];
        000 -> "&" [label = "&"];
-
+     
      
        // punctuation
      
@@ -633,9 +599,6 @@
            /*                     */ "013-o-or-p" -> "->" [label = ">"];
          }
    #+end_src
-
-   #+RESULTS: dfa
-   [[file:dfa.png]]
 
 * Design
 * Use of tools
