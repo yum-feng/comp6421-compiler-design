@@ -13,12 +13,41 @@
                             "<=" "="
                             ">="))
 
+(defparameter *operators-alist* '((eq . "==")
+                                  (plus . "+")
+                                  (or . "|")
+                                  (neq . "<>")
+                                  (minus . "-")
+                                  (and . "&")
+                                  (lt . "<")
+                                  (mult . "*")
+                                  (not . "!")
+                                  (gt . ">")
+                                  (div . "/")
+                                  (leq . "<=")
+                                  (assign . "=")
+                                  (geq . ">=")))
+
 (defparameter *punctuation* '("(" ";"
                               ")" ","
                               "{" "."
                               "}" ":"
                               "[" "::"
                               "]" "->"))
+
+(defparameter *punctuation-alist* '((openpar . "(")
+                              (semicolon . ";")
+                              (closepar . ")")
+                              (comma . ",")
+                              (opencubr . "{")
+                              (dot . ".")
+                              (closecubr . "}")
+                              (colon . ":")
+                              (opensqbr . "[")
+                              (coloncolon . "::")
+                              (closesqbr . "]")
+                              (arrow . "->")))
+
 
 (defparameter *reserved-words* '("if"      "public"  "read"
                                  "then"    "private" "write"
@@ -34,7 +63,6 @@
   "return a rune without consuming the stream."
   (peek-char nil *stream* nil))
 
-
 (defun next ()
   "retun a rune from the stream."
   (let ((r (read-char *stream* nil)))
@@ -44,7 +72,6 @@
           (t (progn (incf *char*)
                     (incf *position*))))
           r))
-
 
 (defun letter-p (r)
   (alpha-char-p r))
@@ -60,7 +87,7 @@
 
 (defun symbol-p (r)
   ;; TODO: find a better way to do this, and use sets.
-  (let ((symbols (delete-duplicates (sort (mapcan (lambda (lexeme) (coerce lexeme 'list)) (append *operators* *punctuation*)) #'char-lessp))))
+  (let ((symbols (delete-duplicates (sort (mapcan (lambda (lexeme) (coerce lexeme 'list)) (append *operators-alist* *punctuation-alist*)) #'char-lessp))))
     (if (member r symbols)
         t)))
 
@@ -94,8 +121,10 @@
 
 (defun lex-float (integer-part)
   "return a float token."
-  (let* ((fraction-part (lex-fraction))
-         (exponent-part (lex-exponent))) ; TODO: will need to handle bad fractions.
+  (let* ((fraction-part (lex-fraction)) ; TODO: will need to handle bad fractions.
+         (exponent-part (if (eql (peek) #\e) (progn (next)
+                                                  (lex-exponent))
+                            0)))
     (make-token :type "float"
                 :lexeme (format nil "~d.~de~d" integer-part fraction-part exponent-part) ; TODO: fraction is literally being displayed as a fraction, lol.
                 :location *line*)))
@@ -123,9 +152,14 @@
                          (if (eql (peek) #\>)
                              (make-token :type "arrow" :lexeme (next) :location *line*)
                              (make-token :type "minus" :lexeme r :location *line*))))
+          ((eql r #\.) (make-token :type "dot" :lexeme (next) :location *line*))
           ((eql r #\,) (make-token :type "comma" :lexeme (next) :location *line*))
           ((eql r #\/) (make-token :type "div" :lexeme (next) :location *line*))
-          ((eql r #\:) (make-token :type "colon" :lexeme (next) :location *line*))
+          ((eql r #\:) (let ((r (next)))
+                         (cond ((eql (peek) #\:)
+                                (make-token :type "coloncolon" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
+                               (t
+                                (make-token :type "colon" :lexeme r :location *line*)))))
           ((eql r #\;) (make-token :type "semicolon" :lexeme (next) :location *line*))
           ((eql r #\<) (let ((r (next)))
                          (cond ((eql (peek) #\=)
@@ -133,25 +167,39 @@
                                ((eql (peek) #\>)
                                 (make-token :type "noteq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
                                (t
-                                (make-token :type "lt" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*)))))
+                                (make-token :type "lt" :lexeme r  :location *line*)))))
           ((eql r #\=) (let ((r (next)))
                          (if (eql (peek) #\=)
                              (make-token :type "eq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*)
-                             (make-token :type "assign" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*))))
+                             (make-token :type "assign" :lexeme r :location *line*))))
           ((eql r #\>) (let ((r (next)))
                          (cond ((eql (peek) #\=)
                                 (make-token :type "geq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
                                (t
-                                (make-token :type "gt" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*)))))
+                                (make-token :type "gt" :lexeme r :location *line*)))))
           ((eql r #\[) (make-token :type "opensqbr" :lexeme (next) :location *line*))
           ((eql r #\]) (make-token :type "closesqbr" :lexeme (next) :location *line*))
           ((eql r #\{) (make-token :type "opencubr" :lexeme (next) :location *line*))
           ((eql r #\|) (make-token :type "or" :lexeme (next) :location *line*))
           ((eql r #\}) (make-token :type "closecubr" :lexeme (next) :location *line*)))))
 
+(defun lex-reserved-words-or-id (&optional (prefix (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t)))
+  (let ((r (peek)))
+    (if (or (letter-p r) (digit-p r) (eql r #\_))
+        (progn (vector-push-extend (next) prefix)
+               (lex-reserved-words-or-id prefix))
+        (if (member prefix *reserved-words* :test 'equal)
+            (make-token :type prefix
+                        :lexeme prefix
+                        :location *line*)
+            (make-token :type "id"
+                        :lexeme prefix
+                        :location *line*)))))
+
 (defun lex ()
-  (let ((rune (peek))
-        (letters '(#\a #\b #\c #\d #\e #\f #\g #\h #\i #\l #\m #\n #\o #\p #\r #\s #\t #\u #\v #\w #\A #\B #\C #\D #\E #\F #\G #\H #\I #\L #\M #\N #\O #\P #\R #\S #\T #\U #\V #\W)))
-    (cond ((member rune letters) (lex-reserved-word-or-id))
+  (let ((rune (peek)))
+    (cond ((not rune) nil)
+          ((or (eq rune #\Newline) (eq rune #\Tab) (eq rune #\Space)) (next))
+          ((letter-p rune) (lex-reserved-words-or-id))
           ((digit-p rune) (lex-integer-or-float))
           ((symbol-p rune) (lex-operator-or-punctuation)))))
