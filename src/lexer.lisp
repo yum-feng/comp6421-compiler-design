@@ -70,7 +70,10 @@
         (denominator (* denominator 10)))
     (if (and r (digit-p r))
         (cond ((nonzero-p r) (lex-fraction (+ sum (/ (digit-p (next)) denominator)) denominator))
-              ((eq r #\0) (let ((o (lex-fraction sum denominator))) (if (eql sum o) (write "bad.") (lex-fraction o denominator)))))
+              ((eq r #\0) (let ((o (lex-fraction (+ sum (/ (digit-p (next)) denominator)) denominator)))
+                            (if (eql sum o) ; if the sum does not change, then there was a trailing of zeros until the end.
+                                (write "bad." #|TODO: better error message |#)
+                                (lex-fraction o denominator)))))
         sum)))
 
 (defun integer-or-float ()
