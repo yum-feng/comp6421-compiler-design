@@ -12,6 +12,9 @@
   - Graphviz examples
     https://sketchviz.com/graphviz-examples
 
+  - Graphviz quick introduction
+    https://www.worthe-it.co.za/blog/2017-09-19-quick-introduction-to-graphviz.html
+
   - Graphviz language bindings
     https://graphviz.org/resources/#language-bindings
 
