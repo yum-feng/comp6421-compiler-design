@@ -3,4 +3,5 @@
   ((:module "src"
     :components
     ((:file "package")
+     (:file "driver")
      (:file "lexer")))))

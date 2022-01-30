@@ -70,7 +70,7 @@
                                  "void"    "while"   "let"
                                  "func"    "impl"))
 
-(defparameter *stream* (open "../t/iter.sample")) ;; TODO: maybe a global variable is not the best.
+(defparameter *stream* (open "../t/lexpositivegrading/lexpositivegrading.src")) ;; TODO: maybe a global variable is not the best.
 
 (defun peek ()
   "return a rune without consuming the stream."
@@ -107,7 +107,7 @@
   "return an integer."
   (let ((r (peek)))
     (if (and r (digit-p r))
-        (cond ((eql r #\0) (digit-p (next)))
+        (cond ((and (= sum 0) (eq r #\0)) (next))
               (t (lex-integer (+ (* sum 10) (digit-p (next))))))
         sum)))
 
@@ -162,7 +162,7 @@
           ((eql r #\+) (make-token :type "plus" :lexeme (next) :location *line*))
           ((eql r #\-) (let ((r (next)))
                          (if (eql (peek) #\>)
-                             (make-token :type "arrow" :lexeme (next) :location *line*)
+                             (make-token :type "arrow" :lexeme (list r (next)) :location *line*)
                              (make-token :type "minus" :lexeme r :location *line*))))
           ((eql r #\.) (make-token :type "dot" :lexeme (next) :location *line*))
           ((eql r #\,) (make-token :type "comma" :lexeme (next) :location *line*))
@@ -209,11 +209,17 @@
                         :location *line*)))))
 
 (defun lex ()
+  (loop for rune = (peek)
+        while (or (eq rune #\Return)
+                  (eq rune #\Newline)
+                  (eq rune #\Tab)
+                  (eq rune #\Space))
+        do (next))
   (let ((rune (peek)))
     (cond ((not rune) nil)
           ((or (eq rune #\Newline)
                (eq rune #\Tab)
-               (eq rune #\Space)) (next))
+               (eq rune #\Space)) (progn (next)))
           ((letter-p rune) (lex-reserved-words-or-id))
           ((digit-p rune) (lex-integer-or-float))
           ((symbol-p rune) (lex-operator-or-punctuation)))))
