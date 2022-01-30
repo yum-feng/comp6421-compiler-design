@@ -6,13 +6,6 @@
 (defvar *char* 1)
 (defvar *position* 1)
 
-(defparameter *operators* '("==" "+" "|"
-                            "<>" "-" "&"
-                            "<"  "*" "!"
-                            ">"  "/"
-                            "<=" "="
-                            ">="))
-
 (defparameter *operators-alist* '((eq . "==")
                                   (plus . "+")
                                   (or . "|")
@@ -28,14 +21,7 @@
                                   (assign . "=")
                                   (geq . ">=")))
 
-(defparameter *punctuation* '("(" ";"
-                              ")" ","
-                              "{" "."
-                              "}" ":"
-                              "[" "::"
-                              "]" "->"))
-
-(defparameter *punctuation-alist* '((openpar . "(")
+(defparameter *punctuations-alist* '((openpar . "(")
                               (semicolon . ";")
                               (closepar . ")")
                               (comma . ",")
@@ -48,6 +34,33 @@
                               (closesqbr . "]")
                               (arrow . "->")))
 
+;(delete-duplicates (sort (mapcan (lambda (lexeme) (coerce lexeme 'list)) (append *operators-alist* *punctuations-alist*)) #'char-lessp))
+(defparameter *symbols* '("!"
+                          "&"
+                          "("
+                          ")"
+                          "*"
+                          "+"
+                          ","
+                          "-"
+                          "->"
+                          "."
+                          "/"
+                          ":"
+                          ":"
+                          ";"
+                          "<"
+                          "<"
+                          "<"
+                          "="
+                          "="
+                          ">"
+                          "="
+                          "["
+                          "]"
+                          "{"
+                          "|"
+                          "}"))
 
 (defparameter *reserved-words* '("if"      "public"  "read"
                                  "then"    "private" "write"
@@ -77,19 +90,18 @@
   (alpha-char-p r))
 
 (defun digit-p (r)
-  "return false if rune is not a digit."
+  "return rune if rune is a digit."
   (digit-char-p r))
 
 (defun nonzero-p (r)
-  "return false if rune is not a digit."
+  "return rune if rune is nonzero."
   (if (and (digit-char-p r) (not (eql r #\0)))
       r))
 
 (defun symbol-p (r)
-  ;; TODO: find a better way to do this, and use sets.
-  (let ((symbols (delete-duplicates (sort (mapcan (lambda (lexeme) (coerce lexeme 'list)) (append *operators-alist* *punctuation-alist*)) #'char-lessp))))
-    (if (member r symbols)
-        t)))
+  "return rune if rune is a symbol."
+  (if (member r *symbols* :test 'string=)
+      r))
 
 (defun lex-integer (&optional (sum 0))
   "return an integer."
@@ -126,7 +138,7 @@
                                                   (lex-exponent))
                             0)))
     (make-token :type "float"
-                :lexeme (format nil "~d.~de~d" integer-part fraction-part exponent-part) ; TODO: fraction is literally being displayed as a fraction, lol.
+                :lexeme (format nil "~fe~d" (+ integer-part fraction-part) exponent-part) ; TODO: fraction is literally being displayed as a fraction, lol.
                 :location *line*)))
 
 (defun lex-integer-or-float ()
@@ -199,7 +211,9 @@
 (defun lex ()
   (let ((rune (peek)))
     (cond ((not rune) nil)
-          ((or (eq rune #\Newline) (eq rune #\Tab) (eq rune #\Space)) (next))
+          ((or (eq rune #\Newline)
+               (eq rune #\Tab)
+               (eq rune #\Space)) (next))
           ((letter-p rune) (lex-reserved-words-or-id))
           ((digit-p rune) (lex-integer-or-float))
           ((symbol-p rune) (lex-operator-or-punctuation)))))
