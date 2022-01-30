@@ -98,7 +98,7 @@
          (exponent-part (lex-exponent))) ; TODO: will need to handle bad fractions.
     (make-token :type "float"
                 :lexeme (format nil "~d.~de~d" integer-part fraction-part exponent-part) ; TODO: fraction is literally being displayed as a fraction, lol.
-                :location *position*)))
+                :location *line*)))
 
 (defun lex-integer-or-float ()
   "return an integer or float token."
@@ -108,23 +108,50 @@
                (lex-float integer-part))
         (make-token :type "integer"
                     :lexeme (format nil "~d" integer-part)
-                    :location *position* #| TODO: needs to be line number |#))))
+                    :location *line*))))
 
-(defun lex-operator ()
-  "return an operator token."
+(defun lex-operator-or-punctuation ()
+  "return either an operator or punctuation token."
   (let ((r (peek)))
-    (if (or ))
-    )
-  )
-
-
-(defun lex-operator-or-punctuation (r)
-  "return operator token."
-  )
+    (cond ((eql r #\!) (make-token :type "not" :lexeme (next) :location *line*))
+          ((eql r #\&) (make-token :type "and" :lexeme (next) :location *line*))
+          ((eql r #\() (make-token :type "openpar" :lexeme (next) :location *line*))
+          ((eql r #\)) (make-token :type "closepar" :lexeme (next) :location *line*))
+          ((eql r #\*) (make-token :type "mult" :lexeme (next) :location *line*))
+          ((eql r #\+) (make-token :type "plus" :lexeme (next) :location *line*))
+          ((eql r #\-) (let ((r (next)))
+                         (if (eql (peek) #\>)
+                             (make-token :type "arrow" :lexeme (next) :location *line*)
+                             (make-token :type "minus" :lexeme r :location *line*))))
+          ((eql r #\,) (make-token :type "comma" :lexeme (next) :location *line*))
+          ((eql r #\/) (make-token :type "div" :lexeme (next) :location *line*))
+          ((eql r #\:) (make-token :type "colon" :lexeme (next) :location *line*))
+          ((eql r #\;) (make-token :type "semicolon" :lexeme (next) :location *line*))
+          ((eql r #\<) (let ((r (next)))
+                         (cond ((eql (peek) #\=)
+                                (make-token :type "leq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
+                               ((eql (peek) #\>)
+                                (make-token :type "noteq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
+                               (t
+                                (make-token :type "lt" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*)))))
+          ((eql r #\=) (let ((r (next)))
+                         (if (eql (peek) #\=)
+                             (make-token :type "eq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*)
+                             (make-token :type "assign" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*))))
+          ((eql r #\>) (let ((r (next)))
+                         (cond ((eql (peek) #\=)
+                                (make-token :type "geq" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
+                               (t
+                                (make-token :type "gt" :lexeme r #|TODO: may not be the best idea to rely on evaluation order|# :location *line*)))))
+          ((eql r #\[) (make-token :type "opensqbr" :lexeme (next) :location *line*))
+          ((eql r #\]) (make-token :type "closesqbr" :lexeme (next) :location *line*))
+          ((eql r #\{) (make-token :type "opencubr" :lexeme (next) :location *line*))
+          ((eql r #\|) (make-token :type "or" :lexeme (next) :location *line*))
+          ((eql r #\}) (make-token :type "closecubr" :lexeme (next) :location *line*)))))
 
 (defun lex ()
-  (let ((rune (peek)))
-    (cond ((member rune #|fix this shit|# '(#\a #\b #\c #\d #\e #\f #\g #\h #\i #\l #\m #\n #\o #\p #\r #\s #\t #\u #\v #\w #\A #\B #\C #\D #\E #\F #\G #\H #\I #\L #\M #\N #\O #\P #\R #\S #\T #\U #\V #\W)) (reserved-word-or-id))
+  (let ((rune (peek))
+        (letters '(#\a #\b #\c #\d #\e #\f #\g #\h #\i #\l #\m #\n #\o #\p #\r #\s #\t #\u #\v #\w #\A #\B #\C #\D #\E #\F #\G #\H #\I #\L #\M #\N #\O #\P #\R #\S #\T #\U #\V #\W)))
+    (cond ((member rune letters) (lex-reserved-word-or-id))
           ((digit-p rune) (lex-integer-or-float))
-          ((symbol-p rune) (operator-or-punctuation)))
-    ))
+          ((symbol-p rune) (lex-operator-or-punctuation)))))
