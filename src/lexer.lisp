@@ -70,7 +70,7 @@
                                  "void"    "while"   "let"
                                  "func"    "impl"))
 
-(defparameter *stream* (open "../t/lexnegativegrading/lexnegativegrading.src")) ;; TODO: maybe a global variable is not the best.
+; (defparameter *stream* (open "../t/lexnegativegrading/lexnegativegrading.src")) ;; TODO: maybe a global variable is not the best.
 
 (defun peek ()
   "return a rune without consuming the stream."
@@ -111,14 +111,14 @@
           (next)
           #\0)
         (loop for r = (peek)
-              while (digit-p r)
+              while (and r (digit-p r))
               collect (next) into integer
               finally (return (coerce integer 'string))))))
 
 (defun lex-fraction ()
   "return a fraction string."
     (loop for r = (peek)
-          while (digit-p r)
+          while (and r (digit-p r))
           collect (next) into fraction
           finally (return (coerce fraction 'string))))
 
@@ -151,7 +151,43 @@
                     :lexeme (format nil "~a" integer-part)
                     :location *line*))))
 
-(defun lex-operator-or-punctuation ()
+(defun lex-inline-comment (&optional s)
+  "return comment string."
+  (let ((r (peek))
+        (l *line*))
+    (loop for r = (peek)
+          until (eql *line* (1+ l))
+          collect (next) into comment
+          finally (return (coerce comment 'string)))))
+
+;((eql r #\*) (loop for r = (peek)
+;                   until (and (eql r #\*)
+;                              (eql (peek) #\/))
+;                   collect (next) into comment
+;                   finally (return (coerce comment 'string))))
+
+;  (loop for r = (next)
+;        while (eql r (eql r #\i))
+;        collect r into text
+;        finally (return (coerce text 'string)))
+
+; (and r
+;      (eql l #\/)
+;      (eql r #\*))
+;
+; ((let ((r (peek)))
+;     (loop for )
+;     (if (and (last t) (eql r #\*))
+;         (lext-block-comment t)
+;         ))
+;   t)
+
+; (defparameter *d* (make-array 0
+;                                      :element-type 'character
+;                                      :fill-pointer 0
+;                                       :adjustable t))
+
+(defun lex-operator-or-punctuation-or-comment ()
   "return either an operator or punctuation token."
   (let ((r (peek)))
     (cond ((eql r #\!) (make-token :type "not" :lexeme (next) :location *line*))
@@ -166,7 +202,10 @@
                              (make-token :type "minus" :lexeme r :location *line*))))
           ((eql r #\.) (make-token :type "dot" :lexeme (next) :location *line*))
           ((eql r #\,) (make-token :type "comma" :lexeme (next) :location *line*))
-          ((eql r #\/) (make-token :type "div" :lexeme (next) :location *line*))
+          ((eql r #\/) (let ((r (next)))
+                         (cond ((eql (peek) #\/) (make-token :type "inlinecmt" :lexeme (lex-inline-comment) :location *line*))
+;;                               ((eql (peek) #\*) (make-token :type "blockcomment" :lexeme "n/a" #|(lex-block-comment r)|# :location *compile-file-pathname*))
+                               (t (make-token :type "div" :lexeme (next) :location *line*)))))
           ((eql r #\:) (let ((r (next)))
                          (cond ((eql (peek) #\:)
                                 (make-token :type "coloncolon" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
@@ -208,18 +247,23 @@
                         :lexeme prefix
                         :location *line*)))))
 
-(defun lex ()
+(defun lex (stream)
+  (progn
+    (setf *line* 1)
+    (setf *char* 1)
+    (setf *position* 1)
+          )
   (loop for rune = (peek)
         while (or (eq rune #\Return)
                   (eq rune #\Newline)
                   (eq rune #\Tab)
                   (eq rune #\Space))
         do (next))
-  (let ((rune (peek)))
-    (cond ((not rune) nil)
-          ((or (eq rune #\Newline)
-               (eq rune #\Tab)
-               (eq rune #\Space)) (progn (next)))
-          ((letter-p rune) (lex-reserved-words-or-id))
-          ((digit-p rune) (lex-integer-or-float))
-          ((symbol-p rune) (lex-operator-or-punctuation)))))
+           (let ((rune (peek)))
+             (cond ((not rune) nil)
+                   ((or (eq rune #\Newline)
+                        (eq rune #\Tab)
+                        (eq rune #\Space)) (progn (next)))
+                   ((letter-p rune) (lex-reserved-words-or-id))
+                   ((digit-p rune) (lex-integer-or-float))
+                   ((symbol-p rune) (lex-operator-or-punctuation-or-comment)))))
