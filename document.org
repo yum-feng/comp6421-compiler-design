@@ -16,6 +16,9 @@
      (reduce (lambda (a b) (concat a "|" b)) letters)
    #+end_src
 
+   #+RESULTS: letter
+   : "a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z"
+
    #+NAME: digit
    #+begin_src elisp :results verbatim
      (defconst digits (loop for digit from ?0 to ?9
@@ -23,6 +26,9 @@
 
      (reduce (lambda (a b) (concat a "|" b)) digits)
    #+end_src
+
+   #+RESULTS: digit
+   : "0|1|2|3|4|5|6|7|8|9"
 
    #+NAME: nonzero
    #+begin_src elisp :results verbatim
@@ -32,12 +38,18 @@
      (reduce (lambda (a b) (concat a "|" b)) nonzeros)
    #+end_src
 
+   #+RESULTS: nonzero
+   : "1|2|3|4|5|6|7|8|9"
+
    #+NAME: fraction
    #+begin_src elisp :results verbatim :noweb yes
      (format ".(%s)*(%s)|.0"
              <<digit()>>
              <<nonzero()>>) ;; would be cool to have a macro which surrounds the result in parenthesis
    #+end_src
+
+   #+RESULTS: fraction
+   : ".(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0"
 
    #+NAME: alphanum
    #+begin_src elisp :results verbatim :noweb yes
@@ -46,17 +58,35 @@
              <<digit()>>)
    #+end_src
 
+   #+RESULTS: alphanum
+   : "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_"
+
 ** id, integer, float
 
    #+NAME: id
    #+begin_src elisp :results verbatim :noweb yes
+     ;; lexical specification
+     ;; id ::= Σ_letter Σ_alphanum*
+     
+     ;; lexical specification rewritten in single character and fed into regex -> dfa tool
+     ;; id ::= la* (Σ_letter -> l, Σ_alphanum -> a)
+     
      (format "(%s)(%s)*"
              <<letter()>>
              <<alphanum()>>)
    #+end_src
 
+   #+RESULTS: id
+   : "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*"
+
    #+NAME: integer
    #+begin_src elisp :results verbatim :noweb yes
+     ;; lexical specification
+     ;; integer ::= Σ_nonzero Σ_digit* | 0
+     
+     ;; lexical specification rewritten in single character and fed into regex -> dfa tool
+     ;; integer ::= nd*|0 (Σ_nonzero -> n, Σ_digit -> n)
+     
      (format "(%s)(%s)*|0"
              <<nonzero()>>
              <<digit()>>)
@@ -64,40 +94,71 @@
 
    #+NAME: float
    #+begin_src elisp :results verbatim :noweb yes
+     ;; lexical specification
+     ;; float ::=  Σ_integer Σ_fraction [e[+|−] Σ_integer]
+     
+     ;; lexical specification rewritten in sub-atomic elements
+     ;; float ::= (Σ_nonzero Σ_digit* | 0) (. Σ_digit* Σ_nonzero | .0) [e[+|−] Σ_integer]
+     
+     ;; lexical specification rewritten in single character
+     ;; float ::= (nd*|0)(.d*n|.0)(e(p|m)?(nd*|0))? (Σ_nonzero -> n, Σ_digit -> n,  + -> p, - -> m)
+     
      (format "(%s)(%s)(e(+|-)?(%s))?"
              <<integer()>>
              <<fraction()>>
              <<integer()>>) ;; WARNING: need to escape . and +
    #+end_src
 
+   #+RESULTS: float
+   : "((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?"
+
 ** operators, punctuation and reserved words
 
    #+NAME: operators
    #+begin_src elisp :results verbatim
+     ;; lexical specification
+     ;; operator :== "!" "&" "(" ")" "*" "+" "," "-" "->" "." "/" ":" "::" ";" "<" "<=" "<>" "=" "==" ">" ">=" "[" "]" "{" "|" "}"
+     
      (defconst operators '("==" "+" "|"
                            "<>" "-" "&"
                            "<"  "*" "!"
                            ">"  "/"
                            "<=" "="
                            ">="))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) operators) ;; WARNING: need to escape |
    #+end_src
 
+   #+RESULTS: operators
+   : "==|+|||<>|-|&|<|*|!|>|/|<=|=|>="
+
    #+NAME: punctuation
    #+begin_src elisp :results verbatim
+     ;; lexical specification
+     ;; punctuation :==  "(" ")" "," "->" "."  ":" "::" ";" "[" "]" "{" "}"
+     
      (defconst punctuation '("(" ";"
                              ")" ","
                              "{" "."
                              "}" ":"
                              "[" "::"
                              "]" "->"))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) punctuation)
    #+end_src
 
+   #+RESULTS: punctuation
+   : "(|;|)|,|{|.|}|:|[|::|]|->"
+
    #+NAME: reserved-words
    #+begin_src elisp :results verbatim
+     ;; lexical specification
+     ;; reserved words ::= "if", "public", "read", "then", "private", "write", "else", "func", "return", "integer", "var", "self", "float", "struct", "inherits", "void", "while", "let", "func", "impl"
+     
+     ;; lexical specification rewritten in single character and fed into regex -> dfa tool
+     ;; reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
+     
+     
      (defconst reserved-words '("if"      "public"  "read"
                                 "then"    "private" "write"
                                 "else"    "func"    "return"
@@ -105,19 +166,29 @@
                                 "float"   "struct"  "inherits"
                                 "void"    "while"   "let"
                                 "func"    "impl"))
-
-       (reduce (lambda (a b) (concat a "|" b)) reserved-words)
+     
+     (reduce (lambda (a b) (concat a "|" b)) reserved-words)
    #+end_src
+
+   #+RESULTS: reserved-words
+   : "if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl"
 
 ** comments
 
    #+NAME: comments
    #+begin_src elisp :results verbatim
+     ;; lexical specifications
+     ;; inline comments ::= //Σ*
+     ;; block comments ::= /*Σ**/
+     
      (defconst comments '("/*" "*/"
                            "//"))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) comments)
    #+end_src
+
+   #+RESULTS: comments
+   : "/*|*/|//"
 
 ** regular expression for language
 
@@ -131,6 +202,9 @@
              <<punctuation()>>
              <<reserved-words()>>) ;; WARNING: sub-components contains characters which requires escaping
    #+end_src
+
+   #+RESULTS: regular expression for language
+   : "((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*)|((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)|(((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?)|(==|+|||<>|-|&|<|*|!|>|/|<=|=|>=)|((|;|)|,|{|.|}|:|[|::|]|->)|(if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl)"
 
 * Finite state automation
 ** helper functions
@@ -186,7 +260,7 @@
 ** reserved words
 
    #+NAME: dfa-reserved-words
-   #+begin_src dot file :file dfa-reserved-words.png
+   #+begin_src dot file :file docs/dfa-reserved-words.png
      digraph {
        rankdir="LR"
     
@@ -239,10 +313,13 @@
      }
    #+end_src
 
+   #+RESULTS: dfa-reserved-words
+   [[file:docs/dfa-reserved-words.png]]
+
 ** id
 
    #+NAME: dfa-id
-   #+begin_src dot file :file dfa-id.png
+   #+begin_src dot file :file docs/dfa-id.png
      digraph {
        rankdir="LR"
      
@@ -260,10 +337,13 @@
      }
    #+end_src
 
+   #+RESULTS: dfa-id
+   [[file:docs/dfa-id.png]]
+
 ** integer
 
    #+NAME: dfa-integer
-   #+begin_src dot file :file dfa-integer.png
+   #+begin_src dot file :file docs/dfa-integer.png
      digraph {
        rankdir="LR"
     
@@ -280,10 +360,13 @@
      }
    #+end_src
 
+   #+RESULTS: dfa-integer
+   [[file:docs/dfa-integer.png]]
+
 ** float
 
    #+NAME: dfa-float
-   #+begin_src dot file :file dfa-float.png
+   #+begin_src dot file :file docs/dfa-float.png
           digraph {
             rankdir="LR"
           
@@ -325,10 +408,13 @@
           }
    #+end_src
 
+   #+RESULTS: dfa-float
+   [[file:docs/dfa-float.png]]
+
 ** operator
 
    #+NAME: dfa-operator
-   #+begin_src dot file :file dfa-operator.png
+   #+begin_src dot file :file docs/dfa-operator.png
      digraph {
        rankdir="LR"
      
@@ -371,10 +457,13 @@
      }
    #+end_src
 
+   #+RESULTS: dfa-operator
+   [[file:docs/dfa-operator.png]]
+
 ** punctuation
 
    #+NAME: dfa-punctuation
-   #+begin_src dot file :file dfa-punctuation.png
+   #+begin_src dot file :file docs/dfa-punctuation.png
      digraph {
        rankdir="LR"
      
@@ -414,191 +503,245 @@
      }
    #+end_src
 
-** TODO comments
-
-   #+NAME: comments
-   #+begin_src dot :file file comments.png
-     digraph {
-       rankdir="LR"
-     
-       // comments
-     
-       "/**/"  [shape="doublecircle"];
-       "//"  [shape="doublecircle"];     
-     
-       // lexical specification
-       // comments :== TODO
-       }
-   #+end_src
+   #+RESULTS: dfa-punctuation
+   [[file:docs/dfa-punctuation.png]]
 
 ** finite state automation for the language
 
    #+NAME: dfa
-   #+begin_src dot :results file :file dfa.png
-     digraph {
-       rankdir="LR"
+   #+begin_src dot :results file :file docs/dfa.png
+          digraph {
+            rankdir="LR"
      
-       labelloc = b;
-       labeljust = r;
-       label = "DISCLAIMER: states that have branched from any characters in the set {e,f,i,l,p,r,s,t,v,w} implies a hidden edge which joins the state '001-id' if a character in 'Σ_alphanum \\ {char}' is consumed, and 'id' if a character is in 'Σ \\ Σ_alphanum'."
-     
-     
-       // reserved words
-       else [shape="doublecircle",color=red];
-       float [shape="doublecircle",color=red];
-       func [shape="doublecircle",color=red];
-       if [shape="doublecircle",color=red];
-       impl [shape="doublecircle",color=red];
-       inherits [shape="doublecircle",color=red];
-       integer [shape="doublecircle",color=red];
-       let [shape="doublecircle",color=red];
-       private [shape="doublecircle",color=red];
-       public [shape="doublecircle",color=red];
-       read [shape="doublecircle",color=red];
-       return [shape="doublecircle",color=red];
-       self [shape="doublecircle",color=red];
-       struct [shape="doublecircle",color=red];
-       then [shape="doublecircle",color=red];
-       var [shape="doublecircle",color=red];
-       void [shape="doublecircle",color=red];
-       while [shape="doublecircle",color=red];
-       write [shape="doublecircle",color=red];
-     
-       // lexical specification
-       // reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
-     
-       000 -> "001-rw" [label = "e"]; "001-rw" -> "011-rw" [label = "l"]; "011-rw" -> "028-rw" [label = "s"]; "028-rw" -> "046-rw" [label = "e"]; "046-rw" -> else [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "002-rw" [label = "f"]; "002-rw" -> "012-rw" [label = "l"]; "012-rw" -> "029-rw" [label = "o"]; "029-rw" -> "047-rw" [label = "a"]; "047-rw" -> "062-rw" [label = "t"]; "062-rw" -> float [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "002-rw" -> "013-rw" [label = "u"]; "013-rw" -> "030-rw" [label = "n"]; "030-rw" -> "048-rw" [label = "c"]; "048-rw" -> func [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "003-rw" [label = "i"]; "003-rw" -> "014-rw" [label = "f"]; "014-rw" -> if [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "003-rw" -> "015-rw" [label = "m"]; "015-rw" -> "031-rw" [label = "p"]; "031-rw" -> "049-rw" [label = "l"]; "049-rw" -> impl [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "003-rw" -> "016-rw" [label = "n"]; "016-rw" -> "032-rw" [label = "h"]; "032-rw" -> "050-rw" [label = "e"]; "050-rw" -> "063-rw" [label = "r"]; "063-rw" -> "071-rw" [label = "i"]; "071-rw" -> "077-rw" [label = "t"]; "077-rw" -> "080-rw" [label = "s"]; "080-rw" -> inherits [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ /*                     */ "016-rw" -> "033-rw" [label = "t"]; "033-rw" -> "051-rw" [label = "e"]; "051-rw" -> "064-rw" [label = "g"]; "064-rw" -> "072-rw" [label = "e"]; "072-rw" -> "078-rw" [label = "r"]; "078-rw" -> integer [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "004-rw" [label = "l"]; "004-rw" -> "017-rw" [label = "e"]; "017-rw" -> "034-rw" [label = "t"]; "034-rw" -> let [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "005-rw" [label = "p"]; "005-rw" -> "018-rw" [label = "r"]; "018-rw" -> "035-rw" [label = "i"]; "035-rw" -> "052-rw" [label = "v"]; "052-rw" -> "065-rw" [label = "a"]; "065-rw" -> "073-rw" [label = "t"]; "073-rw" -> "079-rw" [label = "e"]; "079-rw" -> private [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "005-rw" -> "019-rw" [label = "u"]; "019-rw" -> "036-rw" [label = "b"]; "036-rw" -> "053-rw" [label = "l"]; "053-rw" -> "066-rw" [label = "i"]; "066-rw" -> "074-rw" [label = "c"]; "074-rw" -> public [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "006-rw" [label = "r"]; "006-rw" -> "020-rw" [label = "e"]; "020-rw" -> "037-rw" [label = "a"]; "037-rw" -> "054-rw" [label = "d"]; "054-rw" -> read [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ /*                     */ "020-rw" -> "038-rw" [label = "t"]; "038-rw" -> "055-rw" [label = "u"]; "055-rw" -> "067-rw" [label = "r"]; "067-rw" -> "075-rw" [label = "n"]; "075-rw" -> return [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "007-rw" [label = "s"]; "007-rw" -> "021-rw" [label = "e"]; "021-rw" -> "039-rw" [label = "l"]; "039-rw" -> "056-rw" [label = "f"]; "056-rw" -> self [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "007-rw" -> "022-rw" [label = "t"]; "022-rw" -> "040-rw" [label = "r"]; "040-rw" -> "057-rw" [label = "u"]; "057-rw" -> "068-rw" [label = "c"]; "068-rw" -> "076-rw" [label = "t"]; "076-rw" -> struct [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "008-rw" [label = "t"]; "008-rw" -> "023-rw" [label = "h"]; "023-rw" -> "041-rw" [label = "e"]; "041-rw" -> "058-rw" [label = "n"]; "058-rw" -> then [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "009-rw" [label = "v"]; "009-rw" -> "024-rw" [label = "a"]; "024-rw" -> "042-rw" [label = "r"]; "042-rw" -> var [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "009-rw" -> "025-rw" [label = "o"]; "025-rw" -> "043-rw" [label = "i"]; "043-rw" -> "059-rw" [label = "d"]; "059-rw" -> void [label = "Σ \\ Σ_alphanum (ω)"];
-       000 -> "010-rw" [label = "w"]; "010-rw" -> "026-rw" [label = "h"]; "026-rw" -> "044-rw" [label = "i"]; "044-rw" -> "060-rw" [label = "l"]; "060-rw" -> "069-rw" [label = "e"]; "069-rw" -> while [label = "Σ \\ Σ_alphanum (ω)"];
-       /*                     */ "010-rw" -> "027-rw" [label = "r"]; "027-rw" -> "045-rw" [label = "i"]; "045-rw" -> "061-rw" [label = "t"]; "061-rw" -> "070-rw" [label = "e"]; "070-rw" -> write [label = "Σ \\ Σ_alphanum (ω)"];
-     
-       // id
-     
-       id [shape="doublecircle",color=red];
-     
-       // lexical specification
-       // id ::= Σ_letter Σ_alphanum*
+            labelloc = b;
+            labeljust = r;
+            label = "DISCLAIMER: states that have branched from any characters in the set {e,f,i,l,p,r,s,t,v,w} implies a hidden edge which joins the state '001-id' if a character in 'Σ_alphanum \\ {char}' is consumed, and 'id' if a character is in 'Σ \\ Σ_alphanum'."
      
      
-       000 -> "001-id" [label = "Σ_letter \\ {e,f,i,l,p,r,s,t,v,w}"];        "001-id" -> "001-id" [label = "Σ_alphanum"] ; "001-id" -> id [label = "Σ \\ Σ_alphanum (ω)"];
+            // reserved words
+            else [shape="doublecircle",color=red];
+            float [shape="doublecircle",color=red];
+            func [shape="doublecircle",color=red];
+            if [shape="doublecircle",color=red];
+            impl [shape="doublecircle",color=red];
+            inherits [shape="doublecircle",color=red];
+            integer [shape="doublecircle",color=red];
+            let [shape="doublecircle",color=red];
+            private [shape="doublecircle",color=red];
+            public [shape="doublecircle",color=red];
+            read [shape="doublecircle",color=red];
+            return [shape="doublecircle",color=red];
+            self [shape="doublecircle",color=red];
+            struct [shape="doublecircle",color=red];
+            then [shape="doublecircle",color=red];
+            var [shape="doublecircle",color=red];
+            void [shape="doublecircle",color=red];
+            while [shape="doublecircle",color=red];
+            write [shape="doublecircle",color=red];
+     
+            // lexical specification
+            // reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
+     
+            000 -> "001-rw" [label = "e"]; "001-rw" -> "011-rw" [label = "l"]; "011-rw" -> "028-rw" [label = "s"]; "028-rw" -> "046-rw" [label = "e"]; "046-rw" -> else [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "002-rw" [label = "f"]; "002-rw" -> "012-rw" [label = "l"]; "012-rw" -> "029-rw" [label = "o"]; "029-rw" -> "047-rw" [label = "a"]; "047-rw" -> "062-rw" [label = "t"]; "062-rw" -> float [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "002-rw" -> "013-rw" [label = "u"]; "013-rw" -> "030-rw" [label = "n"]; "030-rw" -> "048-rw" [label = "c"]; "048-rw" -> func [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "003-rw" [label = "i"]; "003-rw" -> "014-rw" [label = "f"]; "014-rw" -> if [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "003-rw" -> "015-rw" [label = "m"]; "015-rw" -> "031-rw" [label = "p"]; "031-rw" -> "049-rw" [label = "l"]; "049-rw" -> impl [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "003-rw" -> "016-rw" [label = "n"]; "016-rw" -> "032-rw" [label = "h"]; "032-rw" -> "050-rw" [label = "e"]; "050-rw" -> "063-rw" [label = "r"]; "063-rw" -> "071-rw" [label = "i"]; "071-rw" -> "077-rw" [label = "t"]; "077-rw" -> "080-rw" [label = "s"]; "080-rw" -> inherits [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ /*                     */ "016-rw" -> "033-rw" [label = "t"]; "033-rw" -> "051-rw" [label = "e"]; "051-rw" -> "064-rw" [label = "g"]; "064-rw" -> "072-rw" [label = "e"]; "072-rw" -> "078-rw" [label = "r"]; "078-rw" -> integer [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "004-rw" [label = "l"]; "004-rw" -> "017-rw" [label = "e"]; "017-rw" -> "034-rw" [label = "t"]; "034-rw" -> let [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "005-rw" [label = "p"]; "005-rw" -> "018-rw" [label = "r"]; "018-rw" -> "035-rw" [label = "i"]; "035-rw" -> "052-rw" [label = "v"]; "052-rw" -> "065-rw" [label = "a"]; "065-rw" -> "073-rw" [label = "t"]; "073-rw" -> "079-rw" [label = "e"]; "079-rw" -> private [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "005-rw" -> "019-rw" [label = "u"]; "019-rw" -> "036-rw" [label = "b"]; "036-rw" -> "053-rw" [label = "l"]; "053-rw" -> "066-rw" [label = "i"]; "066-rw" -> "074-rw" [label = "c"]; "074-rw" -> public [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "006-rw" [label = "r"]; "006-rw" -> "020-rw" [label = "e"]; "020-rw" -> "037-rw" [label = "a"]; "037-rw" -> "054-rw" [label = "d"]; "054-rw" -> read [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ /*                     */ "020-rw" -> "038-rw" [label = "t"]; "038-rw" -> "055-rw" [label = "u"]; "055-rw" -> "067-rw" [label = "r"]; "067-rw" -> "075-rw" [label = "n"]; "075-rw" -> return [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "007-rw" [label = "s"]; "007-rw" -> "021-rw" [label = "e"]; "021-rw" -> "039-rw" [label = "l"]; "039-rw" -> "056-rw" [label = "f"]; "056-rw" -> self [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "007-rw" -> "022-rw" [label = "t"]; "022-rw" -> "040-rw" [label = "r"]; "040-rw" -> "057-rw" [label = "u"]; "057-rw" -> "068-rw" [label = "c"]; "068-rw" -> "076-rw" [label = "t"]; "076-rw" -> struct [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "008-rw" [label = "t"]; "008-rw" -> "023-rw" [label = "h"]; "023-rw" -> "041-rw" [label = "e"]; "041-rw" -> "058-rw" [label = "n"]; "058-rw" -> then [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "009-rw" [label = "v"]; "009-rw" -> "024-rw" [label = "a"]; "024-rw" -> "042-rw" [label = "r"]; "042-rw" -> var [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "009-rw" -> "025-rw" [label = "o"]; "025-rw" -> "043-rw" [label = "i"]; "043-rw" -> "059-rw" [label = "d"]; "059-rw" -> void [label = "Σ \\ Σ_alphanum (ω)"];
+            000 -> "010-rw" [label = "w"]; "010-rw" -> "026-rw" [label = "h"]; "026-rw" -> "044-rw" [label = "i"]; "044-rw" -> "060-rw" [label = "l"]; "060-rw" -> "069-rw" [label = "e"]; "069-rw" -> while [label = "Σ \\ Σ_alphanum (ω)"];
+            /*                     */ "010-rw" -> "027-rw" [label = "r"]; "027-rw" -> "045-rw" [label = "i"]; "045-rw" -> "061-rw" [label = "t"]; "061-rw" -> "070-rw" [label = "e"]; "070-rw" -> write [label = "Σ \\ Σ_alphanum (ω)"];
+     
+            // id
+     
+            id [shape="doublecircle",color=red];
+     
+            // lexical specification
+            // id ::= Σ_letter Σ_alphanum*
      
      
-       _float [shape="doublecircle",color=red];
-       _integer [shape="doublecircle",color=red];
-     
-       
-       // lexical specification
-       // float ::=  Σ_integer Σ_fraction [e[+|−] Σ_integer]
-     
-       // lexical specification rewritten in sub-atomic elements
-       // float ::= (Σ_nonzero Σ_digit* | 0) (. Σ_digit* Σ_nonzero | .0) [e[+|−] Σ_integer]
-     
-       /*                             */ "001-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
-       /*                             */ "002-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
-       000 -> "001-i-or-f" [label = "0"];                                         "001-i-or-f" -> "003-f" [label = "."];                                 
-       /*                                                                                                                                                                                                        */ "007-f" -> _float [label = "0"];
-       /*                                                                                                                                                                                                        */ "007-f" -> "010-f" [label = "Σ_nonzero"]; "010-f" -> _float [label = "Σ \\ Σ_digit (ω)"];
-       /*                                                                                                                                                                                                                                          */ "010-f" -> "010-f" [label = "Σ_digit"];
-       /*                                                                                                                                                                      */ "005-f" -> _float [label = "0"];
-       /*                                                                                                                                                                      */ "005-f" -> "007-f" [label = "{+,-}"];
-       /*                                                                                                                                                                      */ "005-f" -> "010-f" [label = "Σ_nonzero"];
-       000 -> "002-i-or-f" [label = "Σ_nonzero"];                                 "002-i-or-f" -> "003-f" [label = "."]; "003-f" -> "006-f" [label = "Σ_digit"];
-       /*                             */ "002-i-or-f" -> "002-i-or-f" [label = "Σ_digit"];
-       /*                                                                                                                       */ "006-f" -> _float [label = "Σ \\ Σ_digit ∪ {e}"];
-       /*                                                                                                                       */ "006-f" -> "005-f" [label = "e"];
-       /*                                                                                                                       */ "006-f" -> "006-f" [label = "Σ_nonzero"];
-       /*                                                                                                                       */ "006-f" -> "008-f" [label = "0"];                      "008-f" -> "008-f" [label = "0"];
-       /*                                                                                                                                                                      */ "008-f" -> "006-f" [label = "Σ_nonzero"]; 
+            000 -> "001-id" [label = "Σ_letter \\ {e,f,i,l,p,r,s,t,v,w}"];        "001-id" -> "001-id" [label = "Σ_alphanum"] ; "001-id" -> id [label = "Σ \\ Σ_alphanum (ω)"];
      
      
-       // operators
-     
-       "==" [shape="doublecircle"];
-       "<>" [shape="doublecircle"];       
-       "<"  [shape="doublecircle",color=red];
-       ">"  [shape="doublecircle",color=red];
-       "<=" [shape="doublecircle"];
-       ">=" [shape="doublecircle"];
-       "+"  [shape="doublecircle"];
-       "-"  [shape="doublecircle",color=red];
-       "->"  [shape="doublecircle"];
-       "*"  [shape="doublecircle"];     
-       "/"  [shape="doublecircle"];
-       "="  [shape="doublecircle",color=red];
-       "|"  [shape="doublecircle"];
-       "&"  [shape="doublecircle"];
-       "!"  [shape="doublecircle"];     
-     
-       // lexical specification
-       // operator :== "!" "&" "(" ")" "*" "+" "," "-" "->" "." "/" ":" "::" ";" "<" "<=" "<>" "=" "==" ">" ">=" "[" "]" "{" "|" "}"
-     
-       /*                     */ "015-o" -> "==" [label = "="];
-       /*                     */ "014-o" -> "<>" [label = ">"];
-       000 -> "014-o" [label = "<"]; "014-o" -> "<" [label = "Σ \\ {\"=\", \">\"} (ω)"]; 
-       000 -> "016-o" [label = ">"]; "016-o" -> ">" [label = "Σ \\ {\"=\"} (ω)"]; 
-       /*                     */ "014-o" -> "<=" [label = "="];
-       /*                     */ "016-o" -> ">=" [label = "="]; 
-       000 -> "+" [label = "+"];
-       000 -> "013-o-or-p" [label = "-"]; "013-o-or-p" -> "-" [label = "Σ \\ {\"-\"} (ω)"];
-       /*                     */ "013-o-or-p" -> "->" [label = ">"];
-       000 -> "*" [label = "*"];
-       000 -> "/" [label = "/"];
-       000 -> "015-o" [label = "="]; "015-o" -> "=" [label = "Σ \\ {\"=\"} (ω)"];
-       000 -> "|" [label = "|"];
-       000 -> "!" [label = "!"];
-       000 -> "&" [label = "&"];
+            _float [shape="doublecircle",color=red];
+            _integer [shape="doublecircle",color=red];
      
      
-       // punctuation
+            // lexical specification
+            // float ::=  Σ_integer Σ_fraction [e[+|−] Σ_integer]
      
-       "("  [shape="doublecircle"];
-       ")"  [shape="doublecircle"];
-       "{"  [shape="doublecircle"];     
-         "}"  [shape="doublecircle"];
-         "["  [shape="doublecircle"];
-         "]"  [shape="doublecircle"];
-         ";"  [shape="doublecircle"];
-         ","  [shape="doublecircle"];
-         "."  [shape="doublecircle"];         
-         ":"  [shape="doublecircle",color=red];
-         "::" [shape="doublecircle"];
-         "-" [shape="doublecircle",color=red];
-         "->" [shape="doublecircle"];
+            // lexical specification rewritten in sub-atomic elements
+            // float ::= (Σ_nonzero Σ_digit* | 0) (. Σ_digit* Σ_nonzero | .0) [e[+|−] Σ_integer]
+     
+            /*                             */ "001-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
+            /*                             */ "002-i-or-f" -> _integer [label = "Σ \\ {\".\"} (ω)"];
+            000 -> "001-i-or-f" [label = "0"];                                         "001-i-or-f" -> "003-f" [label = "."];                                 
+            /*                                                                                                                                                                                                        */ "007-f" -> _float [label = "0"];
+            /*                                                                                                                                                                                                        */ "007-f" -> "010-f" [label = "Σ_nonzero"]; "010-f" -> _float [label = "Σ \\ Σ_digit (ω)"];
+            /*                                                                                                                                                                                                                                          */ "010-f" -> "010-f" [label = "Σ_digit"];
+            /*                                                                                                                                                                      */ "005-f" -> _float [label = "0"];
+            /*                                                                                                                                                                      */ "005-f" -> "007-f" [label = "{+,-}"];
+            /*                                                                                                                                                                      */ "005-f" -> "010-f" [label = "Σ_nonzero"];
+            000 -> "002-i-or-f" [label = "Σ_nonzero"];                                 "002-i-or-f" -> "003-f" [label = "."]; "003-f" -> "006-f" [label = "Σ_digit"];
+            /*                             */ "002-i-or-f" -> "002-i-or-f" [label = "Σ_digit"];
+            /*                                                                                                                       */ "006-f" -> _float [label = "Σ \\ Σ_digit ∪ {e}"];
+            /*                                                                                                                       */ "006-f" -> "005-f" [label = "e"];
+            /*                                                                                                                       */ "006-f" -> "006-f" [label = "Σ_nonzero"];
+            /*                                                                                                                       */ "006-f" -> "008-f" [label = "0"];                      "008-f" -> "008-f" [label = "0"];
+            /*                                                                                                                                                                      */ "008-f" -> "006-f" [label = "Σ_nonzero"]; 
      
      
-         // lexical specification
-         // punctuation :==  "(" ")" "," "->" "."  ":" "::" ";" "[" "]" "{" "}"
+            // operators
      
-         000 -> "(" [label = "("]; 
-         000 -> ")" [label = ")"];
-         000 -> "{" [label = "{"];
-           000 -> "}" [label = "}"];
-           000 -> "[" [label = "["];
-           000 -> "]" [label = "]"];
-           000 -> ";" [label = ";"];
-           000 -> "," [label = ","];
-           000 -> "." [label = "."];
-           000 -> "012-p" [label = ":"]; "012-p" -> ":" [label = "Σ \\ {\":\"} (ω)"];
-           /*                     */ "012-p" -> "::" [label = ":"];
-           000 -> "013-o-or-p" [label = "-"]; "013-o-or-p" -> "-" [label = "-"];
-           /*                     */ "013-o-or-p" -> "->" [label = ">"];
-         }
+            "==" [shape="doublecircle"];
+            "<>" [shape="doublecircle"];       
+            "<"  [shape="doublecircle",color=red];
+            ">"  [shape="doublecircle",color=red];
+            "<=" [shape="doublecircle"];
+            ">=" [shape="doublecircle"];
+            "+"  [shape="doublecircle"];
+            "-"  [shape="doublecircle",color=red];
+            "->"  [shape="doublecircle"];
+            "*"  [shape="doublecircle"];     
+            "/"  [shape="doublecircle"];
+            "="  [shape="doublecircle",color=red];
+            "|"  [shape="doublecircle"];
+            "&"  [shape="doublecircle"];
+            "!"  [shape="doublecircle"];     
+     
+            // lexical specification
+            // operator :== "!" "&" "(" ")" "*" "+" "," "-" "->" "." "/" ":" "::" ";" "<" "<=" "<>" "=" "==" ">" ">=" "[" "]" "{" "|" "}"
+     
+            /*                     */ "015-o" -> "==" [label = "="];
+            /*                     */ "014-o" -> "<>" [label = ">"];
+            000 -> "014-o" [label = "<"]; "014-o" -> "<" [label = "Σ \\ {\"=\", \">\"} (ω)"]; 
+            000 -> "016-o" [label = ">"]; "016-o" -> ">" [label = "Σ \\ {\"=\"} (ω)"]; 
+            /*                     */ "014-o" -> "<=" [label = "="];
+            /*                     */ "016-o" -> ">=" [label = "="]; 
+            000 -> "+" [label = "+"];
+            000 -> "013-o-or-p" [label = "-"]; "013-o-or-p" -> "-" [label = "Σ \\ {\"-\"} (ω)"];
+            /*                     */ "013-o-or-p" -> "->" [label = ">"];
+            000 -> "*" [label = "*"];
+            000 -> "015-o" [label = "="]; "015-o" -> "=" [label = "Σ \\ {\"=\"} (ω)"];
+            000 -> "|" [label = "|"];
+            000 -> "!" [label = "!"];
+            000 -> "&" [label = "&"];
+     
+            // punctuation
+     
+            "("  [shape="doublecircle"];
+            ")"  [shape="doublecircle"];
+            "{"  [shape="doublecircle"];     
+              "}"  [shape="doublecircle"];
+              "["  [shape="doublecircle"];
+              "]"  [shape="doublecircle"];
+              ";"  [shape="doublecircle"];
+              ","  [shape="doublecircle"];
+              "."  [shape="doublecircle"];         
+              ":"  [shape="doublecircle",color=red];
+              "::" [shape="doublecircle"];
+              "-" [shape="doublecircle",color=red];
+              "->" [shape="doublecircle"];
+     
+     
+              // lexical specification
+              // punctuation :==  "(" ")" "," "->" "."  ":" "::" ";" "[" "]" "{" "}"
+     
+              000 -> "(" [label = "("]; 
+              000 -> ")" [label = ")"];
+              000 -> "{" [label = "{"];
+                000 -> "}" [label = "}"];
+                000 -> "[" [label = "["];
+                000 -> "]" [label = "]"];
+                000 -> ";" [label = ";"];
+                000 -> "," [label = ","];
+                000 -> "." [label = "."];
+                000 -> "012-p" [label = ":"]; "012-p" -> ":" [label = "Σ \\ {\":\"} (ω)"];
+                /*                     */ "012-p" -> "::" [label = ":"];
+                000 -> "013-o-or-p" [label = "-"]; "013-o-or-p" -> "-" [label = "-"];
+                /*                     */ "013-o-or-p" -> "->" [label = ">"];
+     
+                //
+     
+                "/" [shape="doublecircle",color=red];
+                "inlinecmt"  [shape="doublecircle",color=red];  
+                "blockcmt"  [shape="doublecircle"];  
+     
+                000 -> "016-c" [label = "/"]; "016-c" -> "/" [label="Σ \\ {\"/\", \"*\"} (ω)"];
+                /*                          */"016-c" -> "017-c" [label="/"]; "017-c" -> "017-c" [label="Σ\\{\"\\n\"}"]; "017-c" -> "inlinecmt" [label="\\n"];
+                /*                          */"016-c" -> "018-c" [label="*"]; "018-c" -> "018-c" [label="Σ\\{\"*\"}"];   "018-c" -> "019-c" [label="*"]; "019-c" -> "019-c" [label="*"]; "019-c" -> "018-c" [label="Σ\\{\"*\", \"/\"}"]; "019-c" -> "blockcmt" [label="\"/\""]; 
+     
+     
+     
+     }
    #+end_src
 
+   #+RESULTS: dfa
+   [[file:docs/dfa.png]]
+
 * Design
+** DFA
+
+   I approached the DFA by building the lexical elements' automata seperately.
+
+   Each lexical elements are first converted into a regular expression, and then
+   rewritten in single variable characters which can then be fed into a regex ->
+   nfa -> dfa tool.
+
+   #+begin_src
+       // lexical specification
+       // integer ::= Σ_nonzero Σ_digit* | 0
+    
+       // lexical specification rewritten in single character and fed into regex -> dfa tool
+       // integer ::= nd*|0 (Σ_nonzero -> n, Σ_digit -> n)
+   #+end_src
+
+   The seperate automata are then merged together while being careful about the
+   states which overlap:
+
+     - ID and reserved key words overlap
+     - integer and float overlap
+     - operator and punctuation overlap
+
+** Lexer
+
+   After studying a few open source languages and their lexers, I discovered
+   that they were all hand-written lexers and ressembled each other.
+
+   - llvm (cpp lexer)
+   - go-jsonnet (jsonnet lexer)
+   - parse-js (javascript lexer)
+   - yale-haskell (haskell lexer)
+
+   I wish to learn the skills which would enable me to participate in public
+   language community development. As a result, I opted for a hand-written parser.
+
 * Use of tools
+** language
+   
+   I chose to use this project as an opportunity learn lisp, so the compiler is
+   being built with Common Lisp.
+
+** graphing
+
+   The graphs are described using graphviz's dot language.
+  
+** literate programming
+
+   The graphs and documents are written in this the form of semi literate
+   programming.
+
+** regex -> nfa -> dfa
+
+   The following website is used to convert from regex -> nfa -> dfa:
+   https://cyberzhg.github.io/toolbox/nfa2dfa
