@@ -70,7 +70,7 @@
                                  "void"    "while"   "let"
                                  "func"    "impl"))
 
-(defparameter *stream* (open "../t/lexpositivegrading/lexpositivegrading.src")) ;; TODO: maybe a global variable is not the best.
+(defparameter *stream* (open "../t/lexnegativegrading/lexnegativegrading.src")) ;; TODO: maybe a global variable is not the best.
 
 (defun peek ()
   "return a rune without consuming the stream."
@@ -103,42 +103,42 @@
   (if (member r *symbols* :test 'string=)
       r))
 
-(defun lex-integer (&optional (sum 0))
-  "return an integer."
+(defun lex-integer ()
+  "return an integer string."
   (let ((r (peek)))
-    (if (and r (digit-p r))
-        (cond ((and (= sum 0) (eq r #\0)) (next))
-              (t (lex-integer (+ (* sum 10) (digit-p (next))))))
-        sum)))
+    (if (eql r #\0)
+        (progn
+          (next)
+          #\0)
+        (loop for r = (peek)
+              while (digit-p r)
+              collect (next) into integer
+              finally (return (coerce integer 'string))))))
 
-(defun lex-fraction (&optional (sum 0) (denominator 1))
-  "return a fraction."
-  (let ((r (peek))
-        (denominator (* denominator 10)))
-    (if (and r (digit-p r))
-        (cond ((nonzero-p r) (lex-fraction (+ sum (/ (digit-p (next)) denominator)) denominator))
-              ((eq r #\0) (let ((o (lex-fraction (+ sum (/ (digit-p (next)) denominator)) denominator)))
-                            (if (eql sum o) ; if sum does not change, then there was a trailing of zeros until the end.
-                                (write "bad." #|TODO: better error message |#)
-                                (lex-fraction o denominator)))))
-        sum)))
+(defun lex-fraction ()
+  "return a fraction string."
+    (loop for r = (peek)
+          while (digit-p r)
+          collect (next) into fraction
+          finally (return (coerce fraction 'string))))
 
 (defun lex-exponent ()
   (let ((r (peek)))
     (if (eql r #\-)
         (progn
           (next)
-          (* -1 (lex-integer)))
+          (cons #'\- (lex-integer)))
         (lex-integer))))
 
 (defun lex-float (integer-part)
   "return a float token."
   (let* ((fraction-part (lex-fraction)) ; TODO: will need to handle bad fractions.
-         (exponent-part (if (eql (peek) #\e) (progn (next)
-                                                  (lex-exponent))
-                            0)))
+         (exponent-part (if (eql (peek) #\e)
+                            (progn (next)
+                                   (lex-exponent)))))
     (make-token :type "float"
-                :lexeme (format nil "~fe~d" (+ integer-part fraction-part) exponent-part) ; TODO: fraction is literally being displayed as a fraction, lol.
+                :lexeme (format nil "~@[~a~].~@[~a~]~@[e~a~]" integer-part fraction-part (if exponent-part
+                                                                                                exponent-part))
                 :location *line*)))
 
 (defun lex-integer-or-float ()
@@ -148,7 +148,7 @@
         (progn (next)
                (lex-float integer-part))
         (make-token :type "integer"
-                    :lexeme (format nil "~d" integer-part)
+                    :lexeme (format nil "~a" integer-part)
                     :location *line*))))
 
 (defun lex-operator-or-punctuation ()
