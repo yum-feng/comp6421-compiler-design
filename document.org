@@ -5,6 +5,8 @@
 
    #+NAME: letter
    #+begin_src elisp :results verbatim
+     ;; regular expression (verbose)
+     ;; "a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z"
      (defconst letters (do ((u ?Z (1- u))
                             (l ?a (1+ l))
                             (U nil)
@@ -12,8 +14,10 @@
                            ((and (< u ?A) (> l ?z)) (append (nreverse L) U))
                          (push (string u) U)
                          (push (string l) L)))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) letters)
+     
+     ;; "a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z"
    #+end_src
 
    #+RESULTS: letter
@@ -21,10 +25,15 @@
 
    #+NAME: digit
    #+begin_src elisp :results verbatim
+     ;; regular expression (verbose)
+     ;; "0|1|2|3|4|5|6|7|8|9"
+     
      (defconst digits (loop for digit from ?0 to ?9
                             collect (string digit)))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) digits)
+     
+     ;; "0|1|2|3|4|5|6|7|8|9"
    #+end_src
 
    #+RESULTS: digit
@@ -32,10 +41,15 @@
 
    #+NAME: nonzero
    #+begin_src elisp :results verbatim
+     ;; regular expression (verbose)
+     ;; "1|2|3|4|5|6|7|8|9"
+     
      (defconst nonzeros (loop for digit from ?1 to ?9
                             collect (string digit)))
-
+     
      (reduce (lambda (a b) (concat a "|" b)) nonzeros)
+     
+     ;; "1|2|3|4|5|6|7|8|9"
    #+end_src
 
    #+RESULTS: nonzero
@@ -43,9 +57,14 @@
 
    #+NAME: fraction
    #+begin_src elisp :results verbatim :noweb yes
+     ;; regular expression (verbose)
+     ;; ".(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0"
+     
      (format ".(%s)*(%s)|.0"
              <<digit()>>
              <<nonzero()>>) ;; would be cool to have a macro which surrounds the result in parenthesis
+     
+     ;; ".(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0"
    #+end_src
 
    #+RESULTS: fraction
@@ -53,6 +72,9 @@
 
    #+NAME: alphanum
    #+begin_src elisp :results verbatim :noweb yes
+     ;; regular expression (verbose)
+     ;; "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_"
+     
      (format "(%s)|(%s)|_"
              <<letter()>>
              <<digit()>>)
@@ -71,6 +93,9 @@
      ;; lexical specification rewritten in single character and fed into regex -> dfa tool
      ;; id ::= la* (Σ_letter -> l, Σ_alphanum -> a)
      
+     ;; regular expression (verbose)
+     ;; "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)((a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)|(0|1|2|3|4|5|6|7|8|9)|_)*"
+     
      (format "(%s)(%s)*"
              <<letter()>>
              <<alphanum()>>)
@@ -87,10 +112,16 @@
      ;; lexical specification rewritten in single character and fed into regex -> dfa tool
      ;; integer ::= nd*|0 (Σ_nonzero -> n, Σ_digit -> n)
      
+     ;; regular expression (verbose)
+     ;; "(1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0"
+
      (format "(%s)(%s)*|0"
              <<nonzero()>>
              <<digit()>>)
    #+end_src
+
+   #+RESULTS: integer
+   : "(1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0"
 
    #+NAME: float
    #+begin_src elisp :results verbatim :noweb yes
@@ -102,6 +133,9 @@
      
      ;; lexical specification rewritten in single character
      ;; float ::= (nd*|0)(.d*n|.0)(e(p|m)?(nd*|0))? (Σ_nonzero -> n, Σ_digit -> n,  + -> p, - -> m)
+     
+     ;; regular expression (verbose)
+     ;; "((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0)(.(0|1|2|3|4|5|6|7|8|9)*(1|2|3|4|5|6|7|8|9)|.0)(e(+|-)?((1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*|0))?"
      
      (format "(%s)(%s)(e(+|-)?(%s))?"
              <<integer()>>
@@ -119,6 +153,8 @@
      ;; lexical specification
      ;; operator :== "!" "&" "(" ")" "*" "+" "," "-" "->" "." "/" ":" "::" ";" "<" "<=" "<>" "=" "==" ">" ">=" "[" "]" "{" "|" "}"
      
+     ;; regular expression (verbose)
+     ;; "==|+|||<>|-|&|<|*|!|>|/|<=|=|>="
      (defconst operators '("==" "+" "|"
                            "<>" "-" "&"
                            "<"  "*" "!"
@@ -136,6 +172,9 @@
    #+begin_src elisp :results verbatim
      ;; lexical specification
      ;; punctuation :==  "(" ")" "," "->" "."  ":" "::" ";" "[" "]" "{" "}"
+     
+     ;; regular expression (verbose)
+     ;; "(|;|)|,|{|.|}|:|[|::|]|->"
      
      (defconst punctuation '("(" ";"
                              ")" ","
@@ -158,6 +197,8 @@
      ;; lexical specification rewritten in single character and fed into regex -> dfa tool
      ;; reserved words ::= if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl
      
+     ;; regular expression (verbose)
+     ;; "if|public|read|then|private|write|else|func|return|integer|var|self|float|struct|inherits|void|while|let|func|impl"
      
      (defconst reserved-words '("if"      "public"  "read"
                                 "then"    "private" "write"
@@ -208,6 +249,10 @@
 
 * Finite state automation
 ** helper functions
+
+   The following lisp code are used to faciliate some text manipulation from
+   within Emacs and should be ignored by the reader.
+
 
    #+begin_src elisp
      (defun append-suffix-edges ()
@@ -506,7 +551,7 @@
    #+RESULTS: dfa-punctuation
    [[file:docs/dfa-punctuation.png]]
 
-** finite state automation for the language
+** finite state automation for the language 
 
    #+NAME: dfa
    #+begin_src dot :results file :file docs/dfa.png
