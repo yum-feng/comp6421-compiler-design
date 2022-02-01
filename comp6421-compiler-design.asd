@@ -3,5 +3,7 @@
   ((:module "src"
     :components
     ((:file "package")
-     (:file "driver")
-     (:file "lexer")))))
+     (:file "lexer")
+     (:file "driver")))))
+
+; https://riptutorial.com/common-lisp/example/2183/simple-asdf-system-with-a-flat-directory-structure

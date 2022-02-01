@@ -2,6 +2,8 @@
 
 (defstruct token type lexeme location)
 
+(defvar *stream* nil) ; redefined in a lexical scope.
+
 (defvar *line* 1)
 (defvar *char* 1)
 (defvar *position* 1)
@@ -69,8 +71,6 @@
                                  "float"   "struct"  "inherits"
                                  "void"    "while"   "let"
                                  "func"    "impl"))
-
-; (defparameter *stream* (open "../t/lexnegativegrading/lexnegativegrading.src")) ;; TODO: maybe a global variable is not the best.
 
 (defun peek ()
   "return a rune without consuming the stream."
@@ -247,23 +247,18 @@
                         :lexeme prefix
                         :location *line*)))))
 
-(defun lex (stream)
-  (progn
-    (setf *line* 1)
-    (setf *char* 1)
-    (setf *position* 1)
-          )
+(defun lex ()
   (loop for rune = (peek)
         while (or (eq rune #\Return)
                   (eq rune #\Newline)
                   (eq rune #\Tab)
                   (eq rune #\Space))
         do (next))
-           (let ((rune (peek)))
-             (cond ((not rune) nil)
-                   ((or (eq rune #\Newline)
-                        (eq rune #\Tab)
-                        (eq rune #\Space)) (progn (next)))
-                   ((letter-p rune) (lex-reserved-words-or-id))
-                   ((digit-p rune) (lex-integer-or-float))
-                   ((symbol-p rune) (lex-operator-or-punctuation-or-comment)))))
+  (let ((rune (peek)))
+    (cond ((not rune) nil)
+          ((or (eq rune #\Newline)
+               (eq rune #\Tab)
+               (eq rune #\Space)) (progn (next)))
+          ((letter-p rune) (lex-reserved-words-or-id))
+          ((digit-p rune) (lex-integer-or-float))
+          ((symbol-p rune) (lex-operator-or-punctuation-or-comment)))))
