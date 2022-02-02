@@ -136,8 +136,9 @@
     (if (eql (peek) #\.)
         (let* ((fraction-part (lex-fraction))
                (exponent-part (if (eql (peek) #\e) (lex-exponent))))
-          (make-token :type (if (and (> (length fraction-part) 2)
-                                     (eql (char fraction-part (- (length fraction-part) 1)) #\0)) "invalidnum" "float")
+          (make-token :type (if (or (not (digit-p (char exponent-part (1- (length exponent-part)))))
+                                 (and (> (length fraction-part) 2)
+                                     (eql (char fraction-part (- (length fraction-part) 1)) #\0))) "invalidnum" "float")
                       :lexeme (format nil "~@[~a~]~@[~a~]~@[~a~]" integer-part fraction-part exponent-part)
                       :location *line*))
         (make-token :type "integer"
