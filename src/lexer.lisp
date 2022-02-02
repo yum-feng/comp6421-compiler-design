@@ -109,7 +109,7 @@
     (if (eql r #\0)
         (progn
           (next)
-          #\0)
+          "0")
         (loop for r = (peek)
               while (and r (digit-p r))
               collect (next) into integer
@@ -117,75 +117,51 @@
 
 (defun lex-fraction ()
   "return a fraction string."
-    (loop for r = (peek)
-          while (and r (digit-p r))
-          collect (next) into fraction
-          finally (return (coerce fraction 'string))))
+  (next) ; TODO: dirty fix to consume the assumed prefix #\.
+  (loop for r = (peek)
+        while (and r (digit-p r))
+        collect (next) into fraction
+        finally (return (coerce (cons #\. fraction) 'string))))
 
 (defun lex-exponent ()
+  (next) ;TODO: dirty fix to consume the assumed prefix #\e
   (let ((r (peek)))
     (if (eql r #\-)
-        (progn
-          (next)
-          (cons #'\- (lex-integer)))
-        (lex-integer))))
-
-(defun lex-float (integer-part)
-  "return a float token."
-  (let* ((fraction-part (lex-fraction)) ; TODO: will need to handle bad fractions.
-         (exponent-part (if (eql (peek) #\e)
-                            (progn (next)
-                                   (lex-exponent)))))
-    (make-token :type "float"
-                :lexeme (format nil "~@[~a~].~@[~a~]~@[e~a~]" integer-part fraction-part (if exponent-part
-                                                                                                exponent-part))
-                :location *line*)))
+        (concatenate 'string (progn (next) "e-") (lex-integer))
+        (concatenate 'string "e" (lex-integer)))))
 
 (defun lex-integer-or-float ()
   "return an integer or float token."
-  (let ((integer-part (lex-integer))) ;; https://math.stackexchange.com/a/444600
+  (let ((integer-part (lex-integer)))
     (if (eql (peek) #\.)
-        (progn (next)
-               (lex-float integer-part))
+        (let ((fraction-part (lex-fraction)))
+          (make-token :type (if (nonzero-p (char fraction-part (- (length fraction-part) 1))) "float" "invalidnum")
+                      :lexeme (format nil "~@[~a~]~@[~a~]~@[~a~]" integer-part fraction-part (if (eql (peek) #\e) (lex-exponent)))
+                      :location *line*))
         (make-token :type "integer"
                     :lexeme (format nil "~a" integer-part)
                     :location *line*))))
 
-(defun lex-inline-comment (&optional s)
-  "return comment string."
-  (let ((r (peek))
-        (l *line*))
-    (loop for r = (peek)
-          until (eql *line* (1+ l))
-          collect (next) into comment
-          finally (return (coerce comment 'string)))))
+(defun lex-inline-comment ()
+  "return inline comment string."
+  (loop for r = (next)
+        until (or (not r)
+                  (eql r #\Newline)
+                  (eql r #\Return))
+        collect r into text
+        finally (return (coerce text 'string))))
 
-;((eql r #\*) (loop for r = (peek)
-;                   until (and (eql r #\*)
-;                              (eql (peek) #\/))
-;                   collect (next) into comment
-;                   finally (return (coerce comment 'string))))
-
-;  (loop for r = (next)
-;        while (eql r (eql r #\i))
-;        collect r into text
-;        finally (return (coerce text 'string)))
-
-; (and r
-;      (eql l #\/)
-;      (eql r #\*))
-;
-; ((let ((r (peek)))
-;     (loop for )
-;     (if (and (last t) (eql r #\*))
-;         (lext-block-comment t)
-;         ))
-;   t)
-
-; (defparameter *d* (make-array 0
-;                                      :element-type 'character
-;                                      :fill-pointer 0
-;                                       :adjustable t))
+(defun lex-block-comment ()
+  (loop for r = (next)
+        while (or (not (and (eql r #\*)
+                            (eql (peek) #\/)))
+                  r)
+        if (and (eql r #\/)
+                (eql (peek) #\*)) ; entering a nested comment.
+          nconc (cons #\/ (lex-block-comment)) into text
+        else
+          collect r into text
+        finally (return text)))
 
 (defun lex-operator-or-punctuation-or-comment ()
   "return either an operator or punctuation token."
@@ -202,10 +178,15 @@
                              (make-token :type "minus" :lexeme r :location *line*))))
           ((eql r #\.) (make-token :type "dot" :lexeme (next) :location *line*))
           ((eql r #\,) (make-token :type "comma" :lexeme (next) :location *line*))
-          ((eql r #\/) (let ((r (next)))
-                         (cond ((eql (peek) #\/) (make-token :type "inlinecmt" :lexeme (lex-inline-comment) :location *line*))
-;;                               ((eql (peek) #\*) (make-token :type "blockcomment" :lexeme "n/a" #|(lex-block-comment r)|# :location *compile-file-pathname*))
-                               (t (make-token :type "div" :lexeme (next) :location *line*)))))
+          ((eql r #\/) (let ((r (next))
+                             (line *line*))
+                         (cond ((eql (peek) #\/)
+                                (next)
+                                (make-token :type "inlinecmt" :lexeme (concatenate 'string "//" (lex-inline-comment)) :location line))
+                               ((eql (peek) #\*)
+                                (next)
+                                (make-token :type "blockcomment" :lexeme (concatenate 'string "/*" (lex-block-comment)) :location line))
+                               (t (make-token :type "div" :lexeme r :location *line*)))))
           ((eql r #\:) (let ((r (next)))
                          (cond ((eql (peek) #\:)
                                 (make-token :type "coloncolon" :lexeme (list r (next) #|TODO: may not be the best idea to rely on evaluation order, and not sure on using a list either|#) :location *line*))
@@ -261,4 +242,7 @@
                (eq rune #\Space)) (progn (next)))
           ((letter-p rune) (lex-reserved-words-or-id))
           ((digit-p rune) (lex-integer-or-float))
-          ((symbol-p rune) (lex-operator-or-punctuation-or-comment)))))
+          ((symbol-p rune) (lex-operator-or-punctuation-or-comment))
+          (t (make-token :type "invalidchar"
+                         :lexeme (next)
+                         :location *line*)))))
