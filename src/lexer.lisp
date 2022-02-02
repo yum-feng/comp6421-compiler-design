@@ -134,9 +134,11 @@
   "return an integer or float token."
   (let ((integer-part (lex-integer)))
     (if (eql (peek) #\.)
-        (let ((fraction-part (lex-fraction)))
-          (make-token :type (if (nonzero-p (char fraction-part (- (length fraction-part) 1))) "float" "invalidnum")
-                      :lexeme (format nil "~@[~a~]~@[~a~]~@[~a~]" integer-part fraction-part (if (eql (peek) #\e) (lex-exponent)))
+        (let* ((fraction-part (lex-fraction))
+               (exponent-part (if (eql (peek) #\e) (lex-exponent))))
+          (make-token :type (if (and (> (length fraction-part) 2)
+                                     (eql (char fraction-part (- (length fraction-part) 1)) #\0)) "invalidnum" "float")
+                      :lexeme (format nil "~@[~a~]~@[~a~]~@[~a~]" integer-part fraction-part exponent-part)
                       :location *line*))
         (make-token :type "integer"
                     :lexeme (format nil "~a" integer-part)
@@ -153,15 +155,15 @@
 
 (defun lex-block-comment ()
   (loop for r = (next)
-        while (or (not (and (eql r #\*)
-                            (eql (peek) #\/)))
-                  r)
+        until (or (and (eql r #\*)
+                       (eql (peek) #\/))
+                  (not r))
         if (and (eql r #\/)
                 (eql (peek) #\*)) ; entering a nested comment.
-          nconc (cons #\/ (lex-block-comment)) into text
+          append (cons r (lex-block-comment)) into text
         else
           collect r into text
-        finally (return text)))
+        finally (next) (return (append text '(#\* #\/)))))
 
 (defun lex-operator-or-punctuation-or-comment ()
   "return either an operator or punctuation token."
